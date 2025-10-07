@@ -1,4 +1,4 @@
-# 🎮 ChogCross Gambling Game
+# ChogCross Gambling Game
 
 
 
@@ -208,15 +208,4 @@ curl http://localhost:3001/api/player/0x...
 - Check console logs for detailed game flow
 - Monitor network requests for API calls
 
-## 🆘 Support
 
-If you encounter issues:
-
-1. Check the troubleshooting section above
-2. Review browser console for error messages
-3. Ensure all services are running correctly
-4. Verify network connectivity
-
-## 🎉 Enjoy the Game!
-
-Jump carefully, cash out wisely, and climb the leaderboard! 🏆
