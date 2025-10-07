@@ -15,7 +15,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/zacnider/ChogCross
+git clone https://github.com/zacnider/Chog-Cross
 cd game
 
 # Install leaderboard server dependencies
@@ -50,7 +50,7 @@ You should see:
 
 ```bash
 # In a new terminal, navigate to game directory
-cd /path/to/chogson-game
+cd /path/to/Chog-Cross
 
 # Start a local web server (choose one method):
 
@@ -102,7 +102,7 @@ php -S localhost:8000
 ## 📁 Project Structure
 
 ```
-chogson-game/
+Chog-Cross/
 ├── js/                     # Game JavaScript files
 │   ├── CGame.js           # Main game logic
 │   ├── CCharacter.js      # Character controls
