@@ -1,0 +1,712 @@
+/* Privy Wallet Component Styles - Ana sayfada her zaman görünür */
+.privy-wallet-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 60px !important;
+  background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.95) 100%);
+  border-bottom: 2px solid #FFD700;
+  box-shadow: 0 3px 15px rgba(0,0,0,0.5);
+  z-index: 1002 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease;
+}
+
+/* Oyun sayfasında gizli durum */
+.privy-wallet-container.game-hidden {
+  transform: translateY(-100%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* Wallet panel visibility states - using position approach instead of transform */
+.privy-wallet-container.wallet-hidden {
+  top: -100px !important;
+  left: 0px !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transform: none !important;
+  position: fixed !important;
+}
+
+.privy-wallet-container.wallet-visible {
+  top: 0px !important;
+  left: 0px !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  visibility: visible !important;
+  transform: none !important;
+  position: fixed !important;
+}
+
+.wallet-content {
+  width: 100%;
+  max-width: 1200px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.wallet-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #FFD700;
+  font-size: 14px;
+  font-family: 'Orbitron', monospace;
+}
+
+.loading-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #FFD700;
+  border-top: 2px solid transparent;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.wallet-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.wallet-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.status-indicator {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-indicator.connected {
+  color: #00FF00;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.disconnected {
+  color: #FF0000;
+}
+
+.status-text {
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Orbitron', monospace;
+}
+
+.address-value {
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  text-shadow: var(--text-shadow);
+  margin-left: 8px;
+}
+
+.clickable-address {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 2px 4px;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.clickable-address:hover {
+  background: rgba(255, 215, 0, 0.1);
+  color: #FFA500;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
+  transform: scale(1.05);
+}
+
+.clickable-address:active {
+  transform: scale(0.95);
+  background: rgba(255, 215, 0, 0.2);
+}
+
+.wallet-balance {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.balance-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.balance-label {
+  color: #CCCCCC;
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.balance-value {
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: var(--text-shadow);
+}
+
+.balance-value.profit-positive {
+  color: #00FF00;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.balance-value.profit-negative {
+  color: #FF0000;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+}
+
+.balance-debug {
+  margin-top: 2px;
+}
+
+.balance-debug small {
+  color: #888888;
+  font-size: 9px;
+  font-family: 'Orbitron', monospace;
+}
+
+.wallet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.wallet-btn {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid;
+  min-width: 120px;
+  height: 35px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.connect-btn {
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #000000;
+  border-color: #FFD700;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+}
+
+.connect-btn:hover {
+  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.disconnect-btn {
+  background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+  color: #ffffff;
+  border-color: #FF0000;
+  box-shadow: 0 2px 8px rgba(255, 0, 0, 0.3);
+}
+
+.disconnect-btn:hover {
+  background: linear-gradient(135deg, #CC0000 0%, #990000 100%);
+  box-shadow: 0 4px 12px rgba(255, 0, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.refresh-btn {
+  background: linear-gradient(135deg, #00AA00 0%, #008800 100%);
+  color: #ffffff;
+  border-color: #00AA00;
+  box-shadow: 0 2px 8px rgba(0, 170, 0, 0.3);
+}
+
+.refresh-btn:hover {
+  background: linear-gradient(135deg, #008800 0%, #006600 100%);
+  box-shadow: 0 4px 12px rgba(0, 170, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.wallet-btn:active {
+  transform: translateY(0);
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .wallet-content {
+    padding: 0 10px;
+    gap: 10px;
+  }
+  
+  .wallet-balance {
+    gap: 10px;
+  }
+  
+  .balance-label {
+    font-size: 10px;
+  }
+  
+  .balance-value {
+    font-size: 12px;
+  }
+  
+  .wallet-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+    min-width: 100px;
+    height: 30px;
+  }
+}
+
+/* Dark theme adjustments */
+@media (prefers-color-scheme: dark) {
+  .privy-wallet-container {
+    background: rgba(10, 10, 20, 0.95);
+    border-color: #676FFF;
+  }
+}
+
+/* Animation for wallet state changes - removed to prevent left shift */
+.privy-wallet-container {
+  /* Removed slideIn animation to prevent wallet UI shifting left */
+}
+
+/* Pulse animation for connected state */
+.status-indicator.connected {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Wallet Toggle Button Styles */
+.wallet-toggle-btn {
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #FFD700;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #000000;
+  min-width: 80px;
+  height: 30px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  flex-shrink: 0;
+}
+
+/* Game UI specific wallet toggle button */
+#game-ui .wallet-toggle-btn {
+  font-size: 11px;
+  padding: 5px 10px;
+  min-width: 70px;
+  height: 28px;
+}
+
+.wallet-toggle-btn:hover {
+  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
+  transform: translateY(-1px);
+}
+
+.wallet-toggle-btn:active {
+  transform: translateY(0);
+}
+
+.wallet-toggle-btn.wallet-hidden {
+  background: linear-gradient(135deg, #FF6666 0%, #CC4444 100%);
+  border-color: #FF6666;
+  color: #ffffff;
+}
+
+.wallet-toggle-btn.wallet-hidden:hover {
+  background: linear-gradient(135deg, #CC4444 0%, #AA2222 100%);
+  box-shadow: 0 4px 12px rgba(255, 102, 102, 0.5);
+}
+
+/* Send Modal Styles */
+.send-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  backdrop-filter: blur(5px);
+}
+
+.send-modal {
+  background: linear-gradient(135deg, #1a0b3d 0%, #2d1b69 50%, #4a0e4e 100%);
+  border: 2px solid #FFD700;
+  border-radius: 15px;
+  padding: 0;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-50px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.send-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #FFD700;
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.send-modal-header h3 {
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #FFD700;
+  font-size: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255, 215, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.send-modal-content {
+  padding: 25px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.address-input,
+.amount-input {
+  width: 100%;
+  padding: 12px 15px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #FFD700;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.address-input:focus,
+.amount-input:focus {
+  outline: none;
+  border-color: #00FF00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.address-input::placeholder,
+.amount-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.balance-info {
+  margin-top: 5px;
+  color: #00FF00;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.send-modal-actions {
+  display: flex;
+  gap: 15px;
+  padding: 20px 25px;
+  border-top: 1px solid #FFD700;
+  background: rgba(255, 215, 0, 0.05);
+}
+
+.send-btn {
+  background: linear-gradient(135deg, #00FF00 0%, #00CC00 100%);
+  color: #000000;
+  border: 2px solid #00FF00;
+  font-weight: 700;
+}
+
+.send-btn:hover {
+  background: linear-gradient(135deg, #00CC00 0%, #009900 100%);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+.send-submit-btn {
+  background: linear-gradient(135deg, #00FF00 0%, #00CC00 100%);
+  color: #000000;
+  border: 2px solid #00FF00;
+  font-weight: 700;
+  flex: 1;
+}
+
+.send-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00CC00 0%, #009900 100%);
+  box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+}
+
+.send-submit-btn:disabled {
+  background: #666666;
+  border-color: #666666;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.cancel-btn {
+  background: linear-gradient(135deg, #666666 0%, #444444 100%);
+  color: #FFFFFF;
+  border: 2px solid #666666;
+  flex: 1;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #444444 0%, #222222 100%);
+  box-shadow: 0 0 10px rgba(102, 102, 102, 0.4);
+}
+
+/* Transaction Notification Styles */
+.transaction-notification {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 10001;
+  animation: notificationSlideIn 0.3s ease-out;
+}
+
+@keyframes notificationSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.notification-content {
+  background: linear-gradient(135deg, #1a0b3d 0%, #2d1b69 50%, #4a0e4e 100%);
+  border: 2px solid #00FF00;
+  border-radius: 12px;
+  padding: 0;
+  width: 350px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px);
+}
+
+.notification-header {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #00FF00;
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.notification-icon {
+  font-size: 20px;
+  margin-right: 10px;
+}
+
+.notification-title {
+  color: #00FF00;
+  font-family: 'Orbitron', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.notification-close {
+  background: none;
+  border: none;
+  color: #00FF00;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.notification-close:hover {
+  background: rgba(0, 255, 0, 0.2);
+  transform: scale(1.1);
+}
+
+.notification-body {
+  padding: 15px 20px;
+}
+
+.notification-message {
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.notification-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tx-hash,
+.to-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tx-hash .label,
+.to-address .label {
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 40px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.tx-hash .value,
+.to-address .value {
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tx-hash .value:hover,
+.to-address .value:hover {
+  background: rgba(0, 255, 0, 0.2);
+  color: #00FF00;
+}
+
+/* Responsive Design for Send Modal */
+@media (max-width: 768px) {
+  .send-modal {
+    width: 95%;
+    margin: 20px;
+  }
+  
+  .send-modal-header,
+  .send-modal-content,
+  .send-modal-actions {
+    padding: 15px;
+  }
+  
+  .send-modal-header h3 {
+    font-size: 18px;
+  }
+  
+  .transaction-notification {
+    top: 70px;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .notification-content {
+    width: 100%;
+  }
+  
+  .notification-header,
+  .notification-body {
+    padding: 12px 15px;
+  }
+  
+  .notification-title {
+    font-size: 14px;
+  }
+  
+  .notification-message {
+    font-size: 13px;
+  }
+}
