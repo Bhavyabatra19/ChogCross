@@ -254,12 +254,9 @@ this.reset = function (){
         
         console.log("🔄 Using reset position - X:", resetX, "Y:", resetY);
         
-        // Reset position to starting values
-        _oSprite.x = _iStartingX = resetX + 10; // Karakteri sola kaydır (140)
-        _oSprite.y = _iStartingY = resetY - _iHalfHeight - 18; // Kütüğün tam üstünde (216 - 256 - 18 = -58, ama bu yanlış)
-        
-        // DÜZELTME: Y pozisyonu için doğru hesaplama
-        _oSprite.y = _iStartingY = resetY; // Direkt resetY kullan (216)
+        // Reset position to starting values (use same formula as initial spawn)
+        _oSprite.x = _iStartingX = resetX + 10; // slight offset to align with first platform
+        _oSprite.y = _iStartingY = resetY - _iHalfHeight - 18; // align sprite bottom to platform like at first spawn
         
         // Reset physics
         _iGravityForce = 0;

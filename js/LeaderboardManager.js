@@ -1,17 +1,41 @@
 /**
- * LeaderboardManager - Manages communication with the leaderboard server
+ * LeaderboardManager - Manages communication with GhostGraph indexer
+ * Now uses GhostGraph instead of local JSON server
  */
 function LeaderboardManager() {
-    var _sServerUrl = 'http://localhost:3001';
+    var _sServerUrl = 'http://localhost:3001'; // Fallback for local server
     var _bInitialized = false;
     var _oLeaderboardData = null;
     var _sPlayerAddress = null;
+    var _oGhostGraphService = null;
+    var _bUseGhostGraph = true; // Flag to switch between GhostGraph and local server
+    var _oCache = {
+        leaderboards: null,
+        playerStats: {},
+        lastUpdate: 0,
+        cacheTimeout: 60000 // 1 minute cache
+    };
+    var _bGameActive = false; // Track if game is active
 
     /**
      * Initialize the LeaderboardManager
      */
     this.init = function() {
-        console.log("📊 Initializing LeaderboardManager...");
+        console.log("📊 Initializing LeaderboardManager with GhostGraph...");
+        
+        // Initialize GhostGraph service
+        if (window.GhostGraphService) {
+            _oGhostGraphService = new GhostGraphService();
+            console.log("🔮 GhostGraph service initialized");
+            
+            // Immediately set to use GhostGraph
+            _bUseGhostGraph = true;
+            console.log("✅ GhostGraph enabled - will test connection on first use");
+        } else {
+            console.log("⚠️ GhostGraphService not available, using local server");
+            _bUseGhostGraph = false;
+        }
+        
         _bInitialized = true;
         
         // Get player address from wallet
@@ -26,11 +50,18 @@ function LeaderboardManager() {
     };
 
     /**
-     * Set player address
+     * Set game active state to avoid GhostGraph calls during gameplay
      */
-    this.setPlayerAddress = function(address) {
-        _sPlayerAddress = address;
-        console.log("👤 Player address set in LeaderboardManager:", address);
+    this.setGameActive = function(active) {
+        _bGameActive = active;
+        console.log("🎮 Game active state set to:", active);
+    };
+
+    /**
+     * Get current game active state
+     */
+    this.isGameActive = function() {
+        return _bGameActive;
     };
 
     /**
@@ -49,129 +80,190 @@ function LeaderboardManager() {
     };
 
     /**
-     * Load leaderboards from server
+     * Load leaderboards from GhostGraph or local server
      */
     this.loadLeaderboards = function() {
-        return fetch(_sServerUrl + '/api/leaderboards')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    _oLeaderboardData = data.data;
-                    console.log("📊 Leaderboards loaded successfully");
-                    return data.data;
-                } else {
-                    console.error("❌ Failed to load leaderboards:", data.error);
-                    return null;
+        var now = Date.now();
+        
+        // Check cache first
+        if (_oCache.leaderboards && (now - _oCache.lastUpdate) < _oCache.cacheTimeout) {
+            console.log("📊 Using cached leaderboards");
+            return Promise.resolve(_oCache.leaderboards);
+        }
+        
+        // If game is active, don't make GhostGraph calls to avoid interference
+        if (_bGameActive) {
+            console.log("🎮 Game is active - using cached leaderboards to avoid interference");
+            if (_oCache.leaderboards) {
+                return Promise.resolve(_oCache.leaderboards);
+            } else {
+                // Return empty data if no cache
+                var emptyData = {
+                    leaderboards: {
+                        totalWinnings: [],
+                        bestStreak: [],
+                        highestMultiplier: [],
+                        fastestTime: [],
+                        mostRisky: []
+                    },
+                    statistics: {
+                        totalGames: 0,
+                        totalPlayers: 0,
+                        totalWinnings: 0,
+                        averageMultiplier: 0,
+                        lastUpdated: new Date().toISOString()
+                    }
+                };
+                return Promise.resolve(emptyData);
+            }
+        }
+        
+        if (_bUseGhostGraph && _oGhostGraphService) {
+            console.log("🔮 Loading leaderboards from GhostGraph...");
+            return _oGhostGraphService.getLeaderboards()
+                .then(data => {
+                    _oLeaderboardData = data;
+                    _oCache.leaderboards = data;
+                    _oCache.lastUpdate = now;
+                    console.log("📊 Leaderboards loaded from GhostGraph successfully");
+                    return data;
+                })
+                .catch(error => {
+                    console.error("❌ Failed to load leaderboards from GhostGraph:", error);
+                    console.log("🔄 GhostGraph failed, but no local server available");
+                    console.log("📊 Returning empty leaderboard data");
+                    
+                    // Return empty data instead of trying local server
+                    var emptyData = {
+                        leaderboards: {
+                            topEarners: []
+                        },
+                        statistics: {
+                            totalGames: 0,
+                            totalPlayers: 0,
+                            totalWinnings: 0,
+                            averageMultiplier: 0,
+                            lastUpdated: new Date().toISOString()
+                        }
+                    };
+                    
+                    _oLeaderboardData = emptyData;
+                    return emptyData;
+                });
+        } else {
+            console.log("📊 GhostGraph not available, returning empty data");
+            var emptyData = {
+                leaderboards: {
+                    totalWinnings: [],
+                    bestStreak: [],
+                    highestMultiplier: [],
+                    fastestTime: [],
+                    mostRisky: []
+                },
+                statistics: {
+                    totalGames: 0,
+                    totalPlayers: 0,
+                    totalWinnings: 0,
+                    averageMultiplier: 0,
+                    lastUpdated: new Date().toISOString()
                 }
-            })
-            .catch(error => {
-                console.error("❌ Error loading leaderboards:", error);
-                return null;
-            });
+            };
+            
+            _oLeaderboardData = emptyData;
+            return Promise.resolve(emptyData);
+        }
     };
 
     /**
-     * Submit a game result to the server
+     * Submit a game result - GhostGraph automatically indexes from blockchain events
+     * This method is kept for compatibility but doesn't need to do anything
+     * as GhostGraph will automatically detect RoundEnded events
      */
     this.submitGameResult = function(gameData) {
         console.log("🎯 submitGameResult called with:", gameData);
-        console.log("🎯 Player address for submission:", _sPlayerAddress);
+        console.log("🔮 Using GhostGraph - game results are automatically indexed from blockchain events");
         
         if (!_sPlayerAddress) {
             console.error("❌ Cannot submit game: No player address set");
             return Promise.reject(new Error("No player address"));
         }
 
-        const payload = {
-            playerAddress: _sPlayerAddress,
-            betAmount: gameData.betAmount || 1.0,
-            difficulty: gameData.difficulty || 'easy',
-            platforms: gameData.platforms || 0,
-            multiplier: gameData.multiplier || 1.0,
-            winnings: gameData.winnings || 0,
-            gameTime: gameData.gameTime || 0,
-            txHash: gameData.txHash || null,
-            displayName: gameData.displayName || null
-        };
-
-        console.log("🎮 Submitting game result:", payload);
-        console.log("🌐 Server URL:", _sServerUrl + '/api/game');
-        console.log("💰 WINNINGS VALUE BEING SENT:", payload.winnings);
-        console.log("🎯 PLAYER ADDRESS:", payload.playerAddress);
-
-        return fetch(_sServerUrl + '/api/game', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            console.log("🌐 Server response status:", response.status);
-            console.log("🌐 Server response ok:", response.ok);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // GhostGraph automatically indexes RoundEnded events from the blockchain
+        // No need to manually submit data
+        console.log("✅ Game result will be automatically indexed by GhostGraph from RoundEnded event");
+        
+        // Clear GhostGraph cache to force refresh
+        if (_oGhostGraphService) {
+            _oGhostGraphService.clearCache();
+        }
+        
+        // Reload leaderboards after a short delay to allow GhostGraph to process
+        setTimeout(() => {
+            this.loadLeaderboards();
+        }, 2000);
+        
+        // Dispatch event to notify wallet to update profit
+        const leaderboardUpdatedEvent = new CustomEvent('leaderboardUpdated', {
+            detail: { 
+                gameId: 'ghostgraph_' + Date.now(),
+                playerAddress: _sPlayerAddress,
+                winnings: gameData.winnings || 0
             }
-            return response.json();
-        })
-        .then(data => {
-            console.log("📡 Full server response:", data);
-            if (data.success) {
-                console.log("✅ Game result submitted successfully:", data.data.gameId);
-                console.log("💰 SERVER CONFIRMED WINNINGS:", data.data?.winnings);
-                console.log("🎯 SERVER CONFIRMED PLAYER:", data.data?.playerAddress);
-                
-                // Reload leaderboards after submitting
-                this.loadLeaderboards();
-                
-                // Dispatch event to notify wallet to update profit
-                const leaderboardUpdatedEvent = new CustomEvent('leaderboardUpdated', {
-                    detail: { gameId: data.data.gameId }
-                });
-                window.dispatchEvent(leaderboardUpdatedEvent);
-                console.log("📢 leaderboardUpdated event dispatched");
-                
-                return data;
-            } else {
-                console.error("❌ Failed to submit game result:", data.error);
-                throw new Error(data.error);
+        });
+        window.dispatchEvent(leaderboardUpdatedEvent);
+        console.log("📢 leaderboardUpdated event dispatched");
+        
+        return Promise.resolve({
+            success: true,
+            message: 'Game result will be automatically indexed by GhostGraph',
+            data: {
+                gameId: 'ghostgraph_' + Date.now(),
+                playerAddress: _sPlayerAddress,
+                winnings: gameData.winnings || 0
             }
-        })
-        .catch(error => {
-            console.error("❌ Error submitting game result:", error);
-            throw error;
         });
     };
 
     /**
-     * Get player statistics
+     * Get player statistics from GhostGraph or local server
      */
     this.getPlayerStats = function(address) {
         const playerAddress = address || _sPlayerAddress;
+        var now = Date.now();
         
         if (!playerAddress) {
             console.error("❌ Cannot get player stats: No address provided");
             return Promise.reject(new Error("No player address"));
         }
 
-        return fetch(_sServerUrl + '/api/player/' + playerAddress)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    console.log("👤 Player stats loaded:", data.data.player);
-                    return data.data;
-                } else if (response.status === 404) {
-                    console.log("👤 Player not found - first time player");
+        // Check cache first
+        if (_oCache.playerStats[playerAddress] && 
+            (now - _oCache.playerStats[playerAddress].lastUpdate) < _oCache.cacheTimeout) {
+            console.log("📊 Using cached player stats for:", playerAddress);
+            return Promise.resolve(_oCache.playerStats[playerAddress].data);
+        }
+
+        if (_bUseGhostGraph && _oGhostGraphService) {
+            console.log("🔮 Getting player stats from GhostGraph:", playerAddress);
+            return _oGhostGraphService.getPlayerStats(playerAddress)
+                .then(data => {
+                    console.log("👤 Player stats loaded from GhostGraph:", data);
+                    // Cache the data
+                    _oCache.playerStats[playerAddress] = {
+                        data: data,
+                        lastUpdate: now
+                    };
+                    return data;
+                })
+                .catch(error => {
+                    console.error("❌ Failed to load player stats from GhostGraph:", error);
+                    console.log("📊 Returning null - player not found or no games played");
                     return null;
-                } else {
-                    console.error("❌ Failed to load player stats:", data.error);
-                    throw new Error(data.error);
-                }
-            })
-            .catch(error => {
-                console.error("❌ Error loading player stats:", error);
-                throw error;
-            });
+                });
+        } else {
+            console.log("📊 GhostGraph not available, returning null");
+            return Promise.resolve(null);
+        }
     };
 
     /**

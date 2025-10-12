@@ -20,13 +20,13 @@ class GameFrameManager {
     init() {
         this.gameFrame = document.getElementById('game-frame-container');
         this.topPanel = document.getElementById('top-panel');
-        this.bottomPanel = document.getElementById('bottom-panel');
+        this.bottomPanel = null;
         this.leftPanel = document.getElementById('left-panel');
         this.rightPanel = document.getElementById('right-panel');
         this.centerPanel = document.getElementById('center-panel');
         
         this.walletContainerFrame = document.getElementById('wallet-container-frame');
-        this.bettingUIFrame = document.getElementById('betting-ui-frame');
+        this.bettingUIFrame = null;
         
         if (this.gameFrame) {
             console.log("🎮 GameFrameManager initialized");
@@ -40,8 +40,8 @@ class GameFrameManager {
      * Move existing UI elements to new frame structure
      */
     moveExistingUIs() {
-        // Move wallet to top panel
-        this.moveWalletToTopPanel();
+        // Move wallet to left panel
+        this.moveWalletToLeftPanel();
         
         // Move betting UI to bottom panel
         this.moveBettingUIToBottomPanel();
@@ -50,17 +50,78 @@ class GameFrameManager {
     }
     
     /**
-     * Move wallet to top panel
+     * Move wallet to left panel
      */
-    moveWalletToTopPanel() {
-        const walletRoot = document.getElementById('privy-wallet-root');
-        if (walletRoot && this.walletContainerFrame) {
-            // Clone wallet content to top panel
-            const walletClone = walletRoot.cloneNode(true);
-            walletClone.id = 'privy-wallet-root-frame';
-            this.walletContainerFrame.appendChild(walletClone);
+    moveWalletToLeftPanel() {
+        const walletContainerLeft = document.getElementById('wallet-container-left');
+        
+        if (walletContainerLeft) {
+            console.log("🔍 Wallet container left found, setting up wallet rendering...");
             
-            console.log("💰 Wallet moved to top panel");
+            // Create a div for React to mount the wallet component
+            const walletDiv = document.createElement('div');
+            walletDiv.id = 'privy-wallet-root-left';
+            walletDiv.style.width = '100%';
+            walletDiv.style.height = '100%';
+            walletContainerLeft.appendChild(walletDiv);
+            
+            // Try to render wallet in left panel
+            this.renderWalletInLeftPanel();
+            
+            console.log("💰 Wallet container prepared in left panel");
+        } else {
+            console.log("❌ Wallet container left not found");
+        }
+    }
+    
+    /**
+     * Render wallet in left panel
+     */
+    renderWalletInLeftPanel() {
+        console.log("🎯 Attempting to render wallet in left panel...");
+        
+        const leftPanelRoot = document.getElementById('privy-wallet-root-left');
+        if (leftPanelRoot) {
+            // Try to render wallet using the exported function
+            if (window.renderWalletInLeftPanel) {
+                window.renderWalletInLeftPanel();
+            } else {
+                // Fallback: try to move existing wallet
+                this.moveExistingWalletToLeft();
+            }
+        } else {
+            console.log("⏳ Left panel root not ready, will retry...");
+            setTimeout(() => {
+                this.renderWalletInLeftPanel();
+            }, 1000);
+        }
+    }
+    
+    /**
+     * Move existing wallet to left panel
+     */
+    moveExistingWalletToLeft() {
+        const originalWalletRoot = document.getElementById('privy-wallet-root');
+        const leftWalletRoot = document.getElementById('privy-wallet-root-left');
+        
+        if (originalWalletRoot && leftWalletRoot) {
+            console.log("🔄 Moving existing wallet to left panel...");
+            
+            // Move the wallet content to left panel
+            while (originalWalletRoot.firstChild) {
+                leftWalletRoot.appendChild(originalWalletRoot.firstChild);
+            }
+            
+            // Hide the original wallet root
+            originalWalletRoot.style.display = 'none';
+            
+            console.log("✅ Wallet moved to left panel successfully");
+        } else {
+            console.log("⏳ Wallet not ready yet, will retry...");
+            // Retry after a short delay
+            setTimeout(() => {
+                this.moveExistingWalletToLeft();
+            }, 1000);
         }
     }
     
@@ -72,11 +133,7 @@ class GameFrameManager {
         const gameUI = document.getElementById('game-ui');
         
         if (bettingUI && this.bettingUIFrame) {
-            // Clone betting UI to bottom panel
-            const bettingClone = bettingUI.cloneNode(true);
-            bettingClone.id = 'betting-ui-frame-content';
-            bettingClone.style.display = 'flex';
-            this.bettingUIFrame.appendChild(bettingClone);
+            // Bottom panel removed; no cloning needed
             
             console.log("🎯 Betting UI moved to bottom panel");
         }
@@ -105,8 +162,8 @@ class GameFrameManager {
      * Show betting UI in bottom panel
      */
     showBettingUI() {
-        const bettingFrame = document.getElementById('betting-ui-frame-content');
-        const gameFrame = document.getElementById('game-ui-frame-content');
+        const bettingFrame = null;
+        const gameFrame = null;
         
         this.setPanelVisibility(bettingFrame, true);
         this.setPanelVisibility(gameFrame, false);
@@ -118,8 +175,8 @@ class GameFrameManager {
      * Show game UI in bottom panel
      */
     showGameUI() {
-        const bettingFrame = document.getElementById('betting-ui-frame-content');
-        const gameFrame = document.getElementById('game-ui-frame-content');
+        const bettingFrame = null;
+        const gameFrame = null;
         
         this.setPanelVisibility(bettingFrame, false);
         this.setPanelVisibility(gameFrame, true);
@@ -131,8 +188,8 @@ class GameFrameManager {
      * Hide all UI panels
      */
     hideAllUIs() {
-        const bettingFrame = document.getElementById('betting-ui-frame-content');
-        const gameFrame = document.getElementById('game-ui-frame-content');
+        const bettingFrame = null;
+        const gameFrame = null;
         
         this.setPanelVisibility(bettingFrame, false);
         this.setPanelVisibility(gameFrame, false);

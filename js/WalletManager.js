@@ -18,6 +18,8 @@ function WalletManager() {
     var _bContractFailed = false; // Contract fail durumunu takip et
     var _eventListeners = [];
     var _vrfChecker = null; // VRF readiness checker interval
+    var _lastAuthRequest = 0; // Rate limiting için
+    var _authCooldown = 2000; // 2 saniye cooldown
     var _contractEventListeners = []; // Contract event listeners array for cleanup
     
     // Local nonce/balance management for signless flow
@@ -46,6 +48,15 @@ function WalletManager() {
         const { to, data, gas, maxFeePerGas, maxPriorityFeePerGas, value } = params;
         if (!window.realPrivyProvider) throw new Error('Privy provider not available');
         if (!_sWalletAddress) throw new Error('Wallet address not available');
+        
+        // Rate limiting check
+        const now = Date.now();
+        if (now - _lastAuthRequest < _authCooldown) {
+            const waitTime = _authCooldown - (now - _lastAuthRequest);
+            console.log(`⏳ Rate limiting: waiting ${waitTime}ms before next request`);
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+        _lastAuthRequest = Date.now();
         
         // Ensure local nonce
         if (_localNonce === null) {
@@ -1163,6 +1174,13 @@ function WalletManager() {
     
     this.isConnected = function() {
         return _bConnected && _sWalletAddress !== null;
+    };
+    
+    /**
+     * Get current wallet address
+     */
+    this.getWalletAddress = function() {
+        return _sWalletAddress;
     };
     
     this.hasEmbeddedWallet = function() {
@@ -2572,10 +2590,35 @@ function WalletManager() {
             
             let functionSignature, functionSelector, transactionData;
             
-        // Check if round is timed out first (5 minutes = 300 seconds)
-        const currentTime = Math.floor(Date.now() / 1000);
-        const timeSinceLastActivity = currentTime - (roundInfo.lastActivity || 0);
-        const isTimedOut = timeSinceLastActivity > 300; // 5 minutes timeout // 5 minutes
+        // Check if round is timed out using ON-CHAIN time (more reliable than local clock)
+        // Get latest block timestamp
+        let isTimedOut = false;
+        try {
+            const latestBlock = await provider.request({ method: 'eth_getBlockByNumber', params: ['latest', false] });
+            const blockTs = latestBlock && latestBlock.timestamp ? parseInt(latestBlock.timestamp, 16) : 0;
+            // Normalize lastActivity to number seconds
+            let lastAct = 0;
+            const la = roundInfo && roundInfo.lastActivity;
+            if (typeof la === 'bigint') {
+                lastAct = Number(la);
+            } else if (typeof la === 'number') {
+                lastAct = la;
+            } else if (la && typeof la === 'object' && la._hex) {
+                lastAct = parseInt(la._hex, 16);
+            } else if (typeof la === 'string') {
+                // Could be decimal string
+                lastAct = /^0x/i.test(la) ? parseInt(la, 16) : parseInt(la, 10);
+            }
+            // If we couldn't read lastActivity, default to not timed out (safer than false positives)
+            if (blockTs > 0 && lastAct > 0) {
+                isTimedOut = (blockTs - lastAct) >= 300; // 5 minutes
+            } else {
+                isTimedOut = false;
+            }
+        } catch (tsErr) {
+            console.log("⚠️ On-chain timestamp check failed, defaulting to not timed out:", tsErr && tsErr.message ? tsErr.message : tsErr);
+            isTimedOut = false;
+        }
             
             if (isTimedOut) {
                 // Round is timed out - use endTimedOutRound
@@ -2589,29 +2632,23 @@ function WalletManager() {
                 console.log("🔍 Using endTimedOutRound(bytes32) with roundId:", roundId);
                 console.log("💰 EndTimedOutRound will provide timeout-based payout");
             } else {
-                // Round is not timed out - use normal recovery
+                // Round is not timed out
                 if (currentPlatform === 0) {
-                    // Platform 0: cashOut kullan (refund için)
-                    console.log("⚠️ Platform 0 detected - using cashOut for refund");
-                    console.log("🔧 Attempting cashOut recovery...");
-                    
-                    functionSignature = "cashOut(bytes32)";
+                    // Contract requires endRoundOnFail when no platforms were reached
+                    console.log("✅ Not timed out & no platforms reached - using endRoundOnFail");
+                    functionSignature = "endRoundOnFail(bytes32)";
                     functionSelector = ethers.utils.id(functionSignature).slice(0, 10);
                     const encodedRoundId = ethers.utils.defaultAbiCoder.encode(['bytes32'], [roundId]);
                     transactionData = functionSelector + encodedRoundId.slice(2);
-                    console.log("🔍 Using cashOut(bytes32) with roundId:", roundId);
-                    console.log("💰 CashOut will provide refund for platform 0");
+                    console.log("🔍 Using endRoundOnFail(bytes32) with roundId:", roundId);
                 } else {
-                    // Platform > 0: emergencyRecover kullan
-                    console.log("⚠️ Platform " + currentPlatform + " detected - using emergencyRecover");
-                    console.log("🔧 Attempting emergencyRecover recovery...");
-                    
+                    // Platforms reached -> emergencyRecover
+                    console.log("✅ Not timed out & platforms reached (", currentPlatform, ") - using emergencyRecover");
                     functionSignature = "emergencyRecover(bytes32)";
                     functionSelector = ethers.utils.id(functionSignature).slice(0, 10);
                     const encodedRoundId = ethers.utils.defaultAbiCoder.encode(['bytes32'], [roundId]);
                     transactionData = functionSelector + encodedRoundId.slice(2);
                     console.log("🔍 Using emergencyRecover(bytes32) with roundId:", roundId);
-                    console.log("💰 EmergencyRecover will provide platform " + currentPlatform + " payout");
                 }
             }
             
@@ -2642,12 +2679,10 @@ function WalletManager() {
             return {
                 success: true,
                 txHash: txHash,
-                method: isTimedOut ? 'endTimedOutRound' : (currentPlatform === 0 ? 'cashOut' : 'emergencyRecover'),
+                method: isTimedOut ? 'endTimedOutRound' : (currentPlatform === 0 ? 'endRoundOnFail' : 'emergencyRecover'),
                 message: isTimedOut ? 
                     "EndTimedOutRound recovery completed - timeout-based payout received" :
-                    (currentPlatform === 0 ? 
-                        "CashOut recovery completed - refund received" :
-                        "EmergencyRecover recovery completed - platform " + currentPlatform + " payout received")
+                    (currentPlatform === 0 ? "endRoundOnFail recovery completed - refund processed" : "EmergencyRecover recovery completed - platform payout processed")
             };
             
         } catch (error) {

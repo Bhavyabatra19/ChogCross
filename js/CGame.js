@@ -35,6 +35,7 @@ function CGame(oData, iLevel) {
 
     // Parallax layers
     var _oSky, _oBGDecor, _oMiddleDecor, _oForeground, _oGround;
+    var _parallaxMeta = null; // stores baseX and adjustedWidth per layer to avoid drift
     var _parallaxOffset = 0;
     var _lastParallaxX = 0;
     var _parallaxSpeeds = {
@@ -76,6 +77,9 @@ function CGame(oData, iLevel) {
             for (var i = layers.length - 1; i >= 0; i--) {
                 s_oStage.addChildAt(layers[i], 0);
             }
+            // Build parallax meta with real scaled widths and base positions
+            _parallaxMeta = { sky: null, bg_decor: null, middle_decor: null, foreground: null };
+
             for (var i = 0; i < layers.length; i++) {
                 var bmp = layers[i];
                 
@@ -92,6 +96,17 @@ function CGame(oData, iLevel) {
                 var adjustedHeight = bmp.getBounds().height * maxScale;
                 bmp.x = (CANVAS_WIDTH - adjustedWidth) / 2;
                 bmp.y = (CANVAS_HEIGHT - adjustedHeight) / 2;
+
+                // Store meta for stable parallax computation
+                if (bmp === _oSky) {
+                    _parallaxMeta.sky = { bmp: bmp, baseX: bmp.x, width: adjustedWidth, speed: _parallaxSpeeds.sky };
+                } else if (bmp === _oBGDecor) {
+                    _parallaxMeta.bg_decor = { bmp: bmp, baseX: bmp.x, width: adjustedWidth, speed: _parallaxSpeeds.bg_decor };
+                } else if (bmp === _oMiddleDecor) {
+                    _parallaxMeta.middle_decor = { bmp: bmp, baseX: bmp.x, width: adjustedWidth, speed: _parallaxSpeeds.middle_decor };
+                } else if (bmp === _oForeground) {
+                    _parallaxMeta.foreground = { bmp: bmp, baseX: bmp.x, width: adjustedWidth, speed: _parallaxSpeeds.foreground };
+                }
             }
             // ... diğer oyun başlatma kodları ...
         
@@ -137,7 +152,7 @@ function CGame(oData, iLevel) {
         // Show betting UI after help panel is created (delay to ensure it's on top)
         var self = this;
         setTimeout(function() {
-            _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+            _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
         }, 100);
 
         _oObstacleManager.update(0);
@@ -233,9 +248,25 @@ function CGame(oData, iLevel) {
             console.log("🧹 Game state cleared in wallet manager on game over");
         }
         
+        // Notify LeaderboardManager that game has ended
+        if (window.s_oLeaderboardManager && window.s_oLeaderboardManager.setGameActive) {
+            window.s_oLeaderboardManager.setGameActive(false);
+        }
+        
         // Contract game over processing - the round will end automatically on contract side
         // Contract round'u otomatik olarak bitecek, sadece UI'ı handle edelim
         console.log("💀 Game Over - Contract round will end automatically");
+        
+        // Auto mode game over event
+        if (window.autoModeManager) {
+            window.dispatchEvent(new CustomEvent("gameOver", {
+                detail: {
+                    finalMultiplier: _fCurrentMultiplier,
+                    finalWinnings: _fCurrentWinnings,
+                    successfulJumps: _iSuccessfulJumps
+                }
+            }));
+        }
         
         // Disable cashout button when game is over
         if (_oInterface && _oInterface.disableCashoutButton) {
@@ -249,6 +280,14 @@ function CGame(oData, iLevel) {
         } else {
             console.log("⚠️ stopSound function not available");
         }
+        
+        // Schedule music restart after game over screen
+        setTimeout(function() {
+            if (s_oMain && s_oMain.restartBackgroundMusic) {
+                console.log("🎵 Scheduling background music restart after game over...");
+                s_oMain.restartBackgroundMusic();
+            }
+        }, 3000); // 3 saniye sonra müziği yeniden başlat
         
         // Hide multiplier texts when game is over
         if (_oObstacleManager && _oObstacleManager.removeMultiplierTextsFromStage) {
@@ -294,10 +333,9 @@ function CGame(oData, iLevel) {
             playSound("splash",1,false);
             _bUpdateObst = false;
             
-            // Hide game UI and show gambling screen again
+            // During fail, keep game UI visible until shark attack ends and game over screen appears
             if (_bGameStarted) {
-                _oInterface.hideGameUI();
-                console.log("Game Over! Shark attack animation will show game over screen when finished...");
+                console.log("Game Over! Waiting for shark attack to finish, then showing game over screen...");
                 
                 // Process loss in wallet manager (UI side only - contract handles the actual loss)
                 if (window.walletManager) {
@@ -305,6 +343,9 @@ function CGame(oData, iLevel) {
                     window.walletManager.processLoss(_fBetAmount);
                     window.walletManager.clearGameState();
                 }
+                
+                // Do NOT show betting UI after game over in menu path; only via explicit restart
+                // setTimeout removed to prevent canvas UI appearing on menu
                 
                 // Achievement checking removed
                 
@@ -784,7 +825,7 @@ this.getObstacleManager = function (){
         
         // Show betting UI again
         setTimeout(function() {
-            _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+            _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
             // Wallet'ı tekrar göster
             if (_oInterface.showWallet) {
                 _oInterface.showWallet();
@@ -980,6 +1021,12 @@ this.getObstacleManager = function (){
         
         // Contract round başlat
         const contractLevel = _sDifficulty === "easy" ? 0 : 1; // easy = 0, hard = 1
+        
+        // Notify LeaderboardManager that game is starting
+        if (window.s_oLeaderboardManager && window.s_oLeaderboardManager.setGameActive) {
+            window.s_oLeaderboardManager.setGameActive(true);
+        }
+        
         const roundResult = await window.walletManager.startRound(contractLevel, _fBetAmount);
         
         if (!roundResult.success) {
@@ -1036,6 +1083,17 @@ this.getObstacleManager = function (){
         }
         
         console.log("Starting gameplay with bet:", _fBetAmount, "difficulty:", _sDifficulty, "Contract round:", roundResult.roundId);
+        
+        // Auto mode game started event
+        if (window.autoModeManager) {
+            window.dispatchEvent(new CustomEvent("gameStarted", {
+                detail: {
+                    betAmount: _fBetAmount,
+                    difficulty: _sDifficulty,
+                    roundId: roundResult.roundId
+                }
+            }));
+        }
     };
     
     // Calculate current multiplier based on successful jumps, bet amount, and difficulty
@@ -1172,6 +1230,14 @@ this.getObstacleManager = function (){
             console.log("⚠️ stopSound function not available");
         }
         
+        // Schedule music restart after cashout
+        setTimeout(function() {
+            if (s_oMain && s_oMain.restartBackgroundMusic) {
+                console.log("🎵 Scheduling background music restart after cashout...");
+                s_oMain.restartBackgroundMusic();
+            }
+        }, 2000); // 2 saniye sonra müziği yeniden başlat
+        
         // Log successful cashout
         if (window.errorLogger) {
             window.errorLogger.info('Cashout successful', {
@@ -1249,16 +1315,16 @@ this.getObstacleManager = function (){
         setTimeout(function() {
             console.log("Showing betting UI after cashout...");
             console.log("Interface reference:", _oInterface);
-            console.log("showBettingUI function:", _oInterface ? _oInterface.showBettingUI : "undefined");
-                if (_oInterface && _oInterface.showBettingUI) {
-                _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+            console.log("showCanvasBettingUI function:", _oInterface ? _oInterface.showCanvasBettingUI : "undefined");
+                if (_oInterface && _oInterface.showCanvasBettingUI) {
+                _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
                 // Wallet'ı tekrar göster
                 if (_oInterface.showWallet) {
                     _oInterface.showWallet();
                     console.log("👁️ Wallet shown after cashout");
                 }
             } else {
-                console.error("Interface or showBettingUI function not available");
+                console.error("Interface or showCanvasBettingUI function not available");
             }
             
             // Parallax sistemi sıfırla (cashout'ta)
@@ -1271,8 +1337,8 @@ this.getObstacleManager = function (){
         // Additional safety: Force UI reset after notification
         setTimeout(function() {
             console.log("🔧 Safety UI reset after cashout notification");
-            if (_oInterface && _oInterface.showBettingUI) {
-                _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+            if (_oInterface && _oInterface.showCanvasBettingUI) {
+                _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
             }
             if (_oInterface && _oInterface.showWallet) {
                 _oInterface.showWallet();
@@ -1312,6 +1378,14 @@ this.getObstacleManager = function (){
         } else {
             console.log("⚠️ stopSound function not available");
         }
+        
+        // Schedule music restart after manual cashout
+        setTimeout(function() {
+            if (s_oMain && s_oMain.restartBackgroundMusic) {
+                console.log("🎵 Scheduling background music restart after manual cashout...");
+                s_oMain.restartBackgroundMusic();
+            }
+        }, 2000); // 2 saniye sonra müziği yeniden başlat
         
         // HEMEN OYUN DURUMUNU DURDUR - Asenkron işlemleri engelle
         _bGameStarted = false;
@@ -1367,8 +1441,8 @@ this.getObstacleManager = function (){
                     // Safety UI reset after manual cashout
                     setTimeout(function() {
                         console.log("🔧 Safety UI reset after manual cashout");
-                        if (_oInterface && _oInterface.showBettingUI) {
-                            _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+                        if (_oInterface && _oInterface.showCanvasBettingUI) {
+                            _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
                         }
                         if (_oInterface && _oInterface.showWallet) {
                             _oInterface.showWallet();
@@ -1406,6 +1480,14 @@ this.getObstacleManager = function (){
         } else {
             console.log("⚠️ stopSound function not available");
         }
+        
+        // Schedule music restart after fallback cashout
+        setTimeout(function() {
+            if (s_oMain && s_oMain.restartBackgroundMusic) {
+                console.log("🎵 Scheduling background music restart after fallback cashout...");
+                s_oMain.restartBackgroundMusic();
+            }
+        }, 2000); // 2 saniye sonra müziği yeniden başlat
         
         // Clear wallet manager game state
         if (window.walletManager && window.walletManager.clearGameState) {
@@ -1456,8 +1538,8 @@ this.getObstacleManager = function (){
         // Safety UI reset after fallback cashout
         setTimeout(function() {
             console.log("🔧 Safety UI reset after fallback cashout");
-            if (_oInterface && _oInterface.showBettingUI) {
-                _oInterface.showBettingUI(_fBetAmount, _iCurrentLevel);
+            if (_oInterface && _oInterface.showCanvasBettingUI) {
+                _oInterface.showCanvasBettingUI(_fBetAmount, _iCurrentLevel);
             }
             if (_oInterface && _oInterface.showWallet) {
                 _oInterface.showWallet();
@@ -1518,6 +1600,12 @@ this.getObstacleManager = function (){
         // VRF hazır olana kadar jump'a izin verme
         if (window.walletManager && window.walletManager.isVRFReady && !window.walletManager.isVRFReady()) {
             console.log("JUMP BLOCKED - VRF not ready yet, please wait...");
+            return;
+        }
+        
+        // Auto mode kontrolü - manual mode'da manuel jump'a izin ver
+        if (window.autoModeManager && window.autoModeManager.isAutoMode() && !window.autoModeManager.isAutoJumping()) {
+            console.log("JUMP BLOCKED - Auto mode active, manual jumps disabled");
             return;
         }
         
@@ -1788,8 +1876,8 @@ this.getObstacleManager = function (){
             // Toz efektlerini temizle
             _oCharacterManager.clearAllDustEffects();
             
-            // Character pozisyonunu resetle - DÜZELTME: Basit ve doğru parametreler
-            _oCharacterManager.resetPosition(130, 216); // X: 130, Y: 216 (DOĞRU BAŞLANGIÇ POZİSYONU)
+            // Character pozisyonunu config tabanlı başlangıç değerleriyle resetle
+            _oCharacterManager.resetPosition(STARTX, STARTY);
             
             // Character reset fonksiyonunu da çağır
             if (_oCharacterManager.reset) {
@@ -1921,31 +2009,30 @@ this.getObstacleManager = function (){
         if (!_oSky || !_oBGDecor || !_oMiddleDecor || !_oForeground) {
             return; // Katmanlar hazır değilse çık (Ground kaldırıldı)
         }
-        
-        // Katman tekrar pozisyonu (offset) - ÇOK YAVAŞ VE ters yönde!
-        function wrapOffset(offset, originalLayerX, speedMultiplier) {
-            var speedOffset = -(offset * speedMultiplier * 0.001); // ÇOK küçük hareket (0.001)
-            var newX = originalLayerX + speedOffset;
-            
-            // Katman genişliğini al
-            var layerWidth = CANVAS_WIDTH * 1.2; // Scale edilmiş genişlik
-            
-            // Modulo ile endless scroll
-            while (newX > CANVAS_WIDTH + layerWidth) {
-                newX = newX - layerWidth;
-            }
-            while (newX < CANVAS_WIDTH - layerWidth) {
-                newX = newX + layerWidth;
-            }
-            
-            return newX;
+
+        if (!_parallaxMeta) {
+            return;
         }
-        
-        // Parallax katmanları - Ground kaldırıldı
-        _oSky.x = wrapOffset(charX, _oSky.x, 0);        // Statik arkaplan
-        _oBGDecor.x = wrapOffset(charX, _oBGDecor.x, 1);       // Çok yavaş
-        _oMiddleDecor.x = wrapOffset(charX, _oMiddleDecor.x, 2);   // Yavaş
-        _oForeground.x = wrapOffset(charX, _oForeground.x, 3);       // Orta hız
+
+        // Stable, clamped offset relative to baseX to prevent drift and disappearance
+        function applyParallax(meta, offset) {
+            if (!meta || !meta.bmp) return;
+            var speed = meta.speed || 0;
+            var dx = -(offset * speed * 0.002); // slightly faster but still subtle
+            var width = meta.width || CANVAS_WIDTH * 1.2;
+            var base = meta.baseX || 0;
+
+            // Clamp within one-width overflow so the layer never disappears
+            var x = base + (dx % width);
+            if (x < base - width) x += width;
+            if (x > base + width) x -= width;
+            meta.bmp.x = x;
+        }
+
+        applyParallax(_parallaxMeta.sky, charX);
+        applyParallax(_parallaxMeta.bg_decor, charX);
+        applyParallax(_parallaxMeta.middle_decor, charX);
+        applyParallax(_parallaxMeta.foreground, charX);
     };
     
     // PARALLAX RESET FONKSIYONU - Katmanları başlangıç pozisyonuna döndür
@@ -2106,6 +2193,16 @@ this.getObstacleManager = function (){
     this.incrementSuccessfulJumps = function() {
         _iSuccessfulJumps++;
         console.log("Successful jumps incremented to:", _iSuccessfulJumps);
+        
+        // Auto mode platform landing event
+        if (window.autoModeManager) {
+            window.dispatchEvent(new CustomEvent("platformLanded", {
+                detail: {
+                    platformNumber: _iSuccessfulJumps,
+                    multiplier: _fCurrentMultiplier
+                }
+            }));
+        }
     };
     
     // Başarılı zıplama sayısını al (getter)

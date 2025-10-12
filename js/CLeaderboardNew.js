@@ -15,11 +15,7 @@ function CLeaderboardNew() {
 
     var _aCategoryNames = {
         'myStats': 'My Stats',
-        'totalWinnings': 'Top Earners',
-        'bestStreak': 'Best Streaks', 
-        'highestMultiplier': 'Highest Multipliers',
-        'fastestTime': 'Fastest Times',
-        'mostRisky': 'Biggest Bets'
+        'topEarners': 'Top Earners'
     };
 
     this._init = function() {
@@ -66,10 +62,12 @@ function CLeaderboardNew() {
         
         _oContainer.addChild(_oBackground);
 
-        // Leaderboard panel background - bet UI stilinde
+        // Leaderboard panel background - küçültülmüş ve ortalanmış
+        var panel = this._getPanelDimensions();
+        
         var panelBg = new createjs.Shape();
         panelBg.graphics.beginFill("rgba(26, 26, 46, 0.95)").beginStroke("#FFD700").setStrokeStyle(2)
-            .drawRoundRect(50, 50, CANVAS_WIDTH - 100, CANVAS_HEIGHT - 100, 8);
+            .drawRoundRect(panel.x, panel.y, panel.width, panel.height, 8);
         // Panel background - no need to stop propagation, background handler checks coordinates
         _oContainer.addChild(panelBg);
 
@@ -78,7 +76,7 @@ function CLeaderboardNew() {
         titleText.textAlign = "center";
         titleText.textBaseline = "middle";
         titleText.x = CANVAS_WIDTH / 2;
-        titleText.y = 80;
+        titleText.y = panel.y + 30;
         
         // Apply text optimizations - Safe check
         if (window.textRenderer && typeof window.textRenderer.optimizeTextObject === 'function') {
@@ -98,8 +96,8 @@ function CLeaderboardNew() {
 
         // Content container
         _oContentContainer = new createjs.Container();
-        _oContentContainer.x = 70;
-        _oContentContainer.y = 180;
+        _oContentContainer.x = panel.x + 20;
+        _oContentContainer.y = panel.y + 80;
         // Content container - no need to stop propagation, background handler checks coordinates
         _oContainer.addChild(_oContentContainer);
 
@@ -113,12 +111,11 @@ function CLeaderboardNew() {
     };
 
     this._createCloseButton = function() {
-        // Close button - sağ alt köşeye yerleştir
-        var panelRight = CANVAS_WIDTH - 50;  // Panel sağ kenarı
-        var panelBottom = CANVAS_HEIGHT - 50; // Panel alt kenarı
+        // Close button - panelin sağ üst köşesine yerleştir
+        var panel = this._getPanelDimensions();
         
-        var closeButtonX = panelRight - 40;  // Panel sağ kenarından 40px içerde
-        var closeButtonY = panelBottom - 40; // Panel alt kenarından 40px yukarıda
+        var closeButtonX = panel.x + panel.width - 40;  // Panel sağ kenarından 40px içerde
+        var closeButtonY = panel.y + 20; // Panel üst kenarından 20px aşağıda
         
         var oSprite = s_oSpriteLibrary.getSprite('but_exit');
         _oCloseButton = new CGfxButton(closeButtonX, closeButtonY, oSprite, _oContainer);
@@ -127,16 +124,20 @@ function CLeaderboardNew() {
 
     this._createCategoryButtons = function() {
         var categories = Object.keys(_aCategoryNames);
-        var buttonWidth = 150;
-        var buttonHeight = 35;
-        var spacing = 10;
+        var buttonWidth = 120; // Küçültülmüş buton genişliği
+        var buttonHeight = 30; // Küçültülmüş buton yüksekliği
+        var spacing = 20; // Butonlar arası 20px boşluk
         var totalWidth = (buttonWidth + spacing) * categories.length - spacing;
-        var startX = (CANVAS_WIDTH - totalWidth) / 2;
+        
+        // Panel boyutlarını hesapla
+        var panel = this._getPanelDimensions();
+        
+        var startX = panel.x + (panel.width - totalWidth) / 2; // Panel içinde ortala
 
         for (var i = 0; i < categories.length; i++) {
             var category = categories[i];
             var x = startX + i * (buttonWidth + spacing);
-            var y = 130;
+            var y = panel.y + 60; // Panel içinde başlığın altında
 
             // Button background - bet UI stilinde
             var buttonBg = new createjs.Shape();
@@ -181,12 +182,29 @@ function CLeaderboardNew() {
         }
     };
 
+    // Panel boyutlarını hesaplayan yardımcı fonksiyon
+    this._getPanelDimensions = function() {
+        var panelWidth = CANVAS_WIDTH * 0.7; // %70 genişlik
+        var panelHeight = CANVAS_HEIGHT * 0.6; // %60 yükseklik
+        var panelX = (CANVAS_WIDTH - panelWidth) / 2; // Ortala X
+        var panelY = (CANVAS_HEIGHT - panelHeight) / 2; // Ortala Y
+        
+        return {
+            width: panelWidth,
+            height: panelHeight,
+            x: panelX,
+            y: panelY
+        };
+    };
+
     this._createLoadingSpinner = function() {
+        var panel = this._getPanelDimensions();
+        
         _oLoadingSpinner = new createjs.Shape();
         _oLoadingSpinner.graphics.beginStroke("#FFD700").setStrokeStyle(3)
             .drawCircle(0, 0, 20);
-        _oLoadingSpinner.x = CANVAS_WIDTH / 2;
-        _oLoadingSpinner.y = CANVAS_HEIGHT / 2;
+        _oLoadingSpinner.x = panel.x + panel.width / 2; // Panel ortası
+        _oLoadingSpinner.y = panel.y + panel.height / 2; // Panel ortası
         _oLoadingSpinner.alpha = 0;
         // Loading spinner - no need to stop propagation, background handler checks coordinates
         _oContainer.addChild(_oLoadingSpinner);
@@ -325,6 +343,30 @@ function CLeaderboardNew() {
         console.log("👤 Final player address:", playerAddress);
         
         if (!playerAddress) {
+            // Try to get wallet address from different sources
+            if (window.walletManager && window.walletManager.isConnected && window.walletManager.isConnected()) {
+                playerAddress = window.walletManager.getWalletAddress();
+                console.log("🔄 Retrying wallet address from WalletManager:", playerAddress);
+            }
+            
+            // Try Privy wallet
+            if (!playerAddress && window.privyWallet && window.privyWallet.getAddress) {
+                try {
+                    playerAddress = window.privyWallet.getAddress();
+                    console.log("🔄 Retrying wallet address from Privy:", playerAddress);
+                } catch (e) {
+                    console.log("⚠️ Privy wallet not available:", e);
+                }
+            }
+            
+            // Try window.ethereum
+            if (!playerAddress && window.ethereum && window.ethereum.selectedAddress) {
+                playerAddress = window.ethereum.selectedAddress;
+                console.log("🔄 Retrying wallet address from window.ethereum:", playerAddress);
+            }
+        }
+        
+        if (!playerAddress) {
             var notConnectedText = new createjs.Text("Connect your wallet to see your stats", "18px Orbitron, Arial, sans-serif", "#888888");
             notConnectedText.textAlign = "center";
             notConnectedText.textBaseline = "middle";
@@ -425,27 +467,47 @@ function CLeaderboardNew() {
         addressText.x = 20;
         addressText.y = 50;
         
+        // Find player's rank in Top Earners
+        var playerRank = "N/A";
+        if (_oData && _oData.leaderboards && _oData.leaderboards.topEarners) {
+            var rankIndex = _oData.leaderboards.topEarners.findIndex(function(entry) {
+                return entry.address.toLowerCase() === playerAddress.toLowerCase();
+            });
+            if (rankIndex !== -1) {
+                playerRank = "#" + (rankIndex + 1);
+            }
+        }
+        
+        var rankText = new createjs.Text("Rank: " + playerRank, "18px Orbitron, Arial, sans-serif", "#FFD700");
+        rankText.textAlign = "left";
+        rankText.textBaseline = "middle";
+        rankText.x = 20;
+        rankText.y = 80;
+        
         // Apply text optimizations - Safe check
         if (window.textRenderer && typeof window.textRenderer.optimizeTextObject === 'function') {
             window.textRenderer.optimizeTextObject(addressText);
+            window.textRenderer.optimizeTextObject(rankText);
         }
         
         // Enhanced shadow for better readability
         addressText.shadow = new createjs.Shadow("#000000", 1, 1, 2);
+        rankText.shadow = new createjs.Shadow("#000000", 1, 1, 2);
         
         _oContentContainer.addChild(addressText);
+        _oContentContainer.addChild(rankText);
         
         // Stats grid  
-        var statsY = 90;
+        var statsY = 120;
         var statHeight = 35;
         var leftColumn = 20;
         var rightColumn = 400;
         
         // Calculate detailed stats
-        var totalWins = games.filter(function(g) { return g.winnings > 0; }).length;
-        var totalLosses = games.filter(function(g) { return g.winnings === 0; }).length;
+        var totalWins = player.totalWins || games.filter(function(g) { return g.winnings > 0; }).length;
+        var totalLosses = player.totalLosses || games.filter(function(g) { return g.winnings === 0; }).length;
         var totalWinnings = player.totalWinnings || 0;
-        var totalLosses_Amount = games.filter(function(g) { return g.winnings === 0; }).reduce(function(sum, g) { return sum + g.betAmount; }, 0);
+        var totalLosses_Amount = player.totalLossesAmount || games.filter(function(g) { return g.winnings === 0; }).reduce(function(sum, g) { return sum + g.betAmount; }, 0);
         var netProfit = totalWinnings - totalLosses_Amount;
         
         // Left column stats
@@ -509,7 +571,7 @@ function CLeaderboardNew() {
 
     this._createHeaders = function() {
         var headers = this._getHeadersForCategory(_sCurrentCategory);
-        var columnWidths = [60, 200, 150, 150];
+        var columnWidths = [60, 200, 150, 120, 150];
         var x = 0;
         
         for (var i = 0; i < headers.length; i++) {
@@ -541,23 +603,15 @@ function CLeaderboardNew() {
 
     this._getHeadersForCategory = function(category) {
         switch (category) {
-            case 'totalWinnings':
-                return ['Rank', 'Player', 'Total Winnings', 'Games Played'];
-            case 'bestStreak':
-                return ['Rank', 'Player', 'Best Streak', 'Date'];
-            case 'highestMultiplier':
-                return ['Rank', 'Player', 'Multiplier', 'Bet Amount'];
-            case 'fastestTime':
-                return ['Rank', 'Player', 'Time (sec)', 'Platforms'];
-            case 'mostRisky':
-                return ['Rank', 'Player', 'Highest Bet', 'Difficulty'];
+            case 'topEarners':
+                return ['Rank', 'Player', 'Total Winnings', 'Games Played', 'Win Rate'];
             default:
                 return ['Rank', 'Player', 'Value', 'Extra'];
         }
     };
 
     this._createLeaderboardRow = function(entry, rank, y) {
-        var columnWidths = [60, 200, 150, 150];
+        var columnWidths = [60, 200, 150, 120, 150];
         var x = 0;
         
         // Rank - Use optimized text rendering
@@ -621,16 +675,13 @@ function CLeaderboardNew() {
 
     this._getValuesForCategory = function(category, entry) {
         switch (category) {
-            case 'totalWinnings':
-                return [entry.totalWinnings.toFixed(2) + " MON", entry.totalGames || 0];
-            case 'bestStreak':
-                return [entry.bestStreak + " platforms", this._formatDate(entry.lastPlayed)];
-            case 'highestMultiplier':
-                return [entry.highestMultiplier.toFixed(2) + "x", entry.highestBet?.toFixed(2) + " MON" || "N/A"];
-            case 'fastestTime':
-                return [entry.fastestTime + "s", entry.bestStreak + " platforms"];
-            case 'mostRisky':
-                return [entry.highestBet.toFixed(2) + " MON", "Hard"];
+            case 'topEarners':
+                var winRate = entry.totalGames > 0 ? ((entry.totalWins || 0) / entry.totalGames * 100).toFixed(1) : '0.0';
+                return [
+                    entry.totalWinnings.toFixed(2) + " MON", 
+                    entry.totalGames || 0,
+                    winRate + "%"
+                ];
             default:
                 return ["N/A", "N/A"];
         }

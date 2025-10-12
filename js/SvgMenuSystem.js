@@ -22,43 +22,12 @@ function SvgMenuSystem() {
     var _bSoundEnabled = true;
     var _bFullscreenEnabled = false;
     
-    // --- SOCIAL MENU SYSTEM ---
-    var _bSocialOpen = false;
-    var _oSocialContainer = null;
-    var _oSocialButton = null;
-    var _oSocialItems = null;
 
     this.init = function() {
-        console.log("🎨 Initializing SVG Menu System...");
-        
-        // Get DOM elements
-        _oMenuContainer = document.getElementById('svg-menu-container');
-        _oMenuButton = document.getElementById('svg-menu-button');
-        _oMenuItems = document.getElementById('menu-items');
-        
-        // Get menu items
-        _oOptionsItem = document.getElementById('menu-options');
-        _oLeaderboardItem = document.getElementById('menu-leaderboard');
-        _oSoundItem = document.getElementById('menu-sound');
-        _oFullscreenItem = document.getElementById('menu-fullscreen');
-        _oCreditsItem = document.getElementById('menu-credits');
-        
-        _aMenuItems = [_oOptionsItem, _oLeaderboardItem, _oSoundItem, _oFullscreenItem, _oCreditsItem];
-        
-        // Initialize state
-        this._updateSoundState();
-        this._updateFullscreenState();
-        
-        // Add event listeners
-        this._addEventListeners();
-        
-        // Initialize canvas-responsive positioning
-        this._initCanvasResponsivePositioning();
-        
-        // Initialize social menu
-        this._initSocialMenu();
-        
-        console.log("✅ SVG Menu System initialized successfully!");
+        console.log("🎨 SVG Menu System disabled - moved to right panel");
+        // Canvas üzerindeki SVG menü devre dışı bırakıldı
+        // Menü artık sağ panelde çalışıyor
+        return;
     };
     
     this._initCanvasResponsivePositioning = function() {
@@ -67,29 +36,20 @@ function SvgMenuSystem() {
         var updateButtonPositions = function() {
             var canvas = document.getElementById('canvas');
             var gameContainer = document.getElementById('game-container');
-            if (!canvas || !gameContainer || !_oMenuContainer || !_oSocialContainer) return;
+            if (!canvas || !gameContainer || !_oMenuContainer) return;
             var canvasRect = canvas.getBoundingClientRect();
             var containerRect = gameContainer.getBoundingClientRect();
             // Responsive ölçek çarpanı artık global g_canvasScale
             var scale = (typeof g_canvasScale !== 'undefined') ? g_canvasScale : 1;
             // --- MENU BUTTON (TOP-RIGHT) ---
             var menuButtonOffsetRight = 60; // px (10px daha sağa kaydırıldı)
-            var menuButtonOffsetTop = 50; // px
+            var menuButtonOffsetTop = 150; // px (100px aşağı alındı)
             _oMenuContainer.style.position = 'fixed';
             _oMenuContainer.style.right = (containerRect.width - canvasRect.right + menuButtonOffsetRight * scale) + 'px';
             _oMenuContainer.style.top = (canvasRect.top + menuButtonOffsetTop * scale) + 'px';
             _oMenuContainer.style.left = 'auto';
             _oMenuContainer.style.transform = 'scale(' + scale + ')';
             _oMenuContainer.style.transformOrigin = 'top right';
-            // --- SOCIAL MEDIA BUTTON (TOP-LEFT) ---
-            var socialButtonOffsetLeft = 40; // px
-            var socialButtonOffsetTop = 52; // px
-            _oSocialContainer.style.position = 'fixed';
-            _oSocialContainer.style.left = (canvasRect.left + socialButtonOffsetLeft * scale) + 'px';
-            _oSocialContainer.style.top = (canvasRect.top + socialButtonOffsetTop * scale) + 'px';
-            _oSocialContainer.style.right = 'auto';
-            _oSocialContainer.style.transform = 'scale(' + scale + ')';
-            _oSocialContainer.style.transformOrigin = 'top left';
         };
         updateButtonPositions();
         window.addEventListener('resize', updateButtonPositions);
@@ -103,28 +63,6 @@ function SvgMenuSystem() {
         console.log("✅ Canvas bounding-box responsive positioning initialized!");
     };
     
-    this._initSocialMenu = function() {
-        _oSocialContainer = document.getElementById('social-menu-container');
-        _oSocialButton = document.getElementById('social-menu-button');
-        _oSocialItems = document.getElementById('social-items');
-        if (!_oSocialButton || !_oSocialContainer) return;
-        _oSocialButton.addEventListener('click', function(e) {
-            e.stopPropagation();
-            _bSocialOpen = !_bSocialOpen;
-            if (_bSocialOpen) {
-                _oSocialContainer.classList.add('social-open');
-            } else {
-                _oSocialContainer.classList.remove('social-open');
-            }
-        });
-        // Dışarı tıklayınca kapansın
-        document.addEventListener('click', function(e) {
-            if (_bSocialOpen && !_oSocialContainer.contains(e.target)) {
-                _oSocialContainer.classList.remove('social-open');
-                _bSocialOpen = false;
-            }
-        });
-    };
     
     
     this._addEventListeners = function() {
@@ -751,27 +689,6 @@ function SvgMenuSystem() {
         this.init();
     }
 
-    // Social menu visibility control
-    this.setSocialMenuVisible = function(visible) {
-        var socialContainer = document.getElementById('social-menu-container');
-        if (socialContainer) {
-            socialContainer.style.display = visible ? 'block' : 'none';
-        }
-    };
-
-    // Ana sayfa/oyun state kontrolü için event listener ekle
-    document.addEventListener('DOMContentLoaded', function() {
-        // Ana menüde göster
-        svgMenuSystem.setSocialMenuVisible(true);
-        // Oyun başladığında gizle
-        document.addEventListener('game_start', function() {
-            svgMenuSystem.setSocialMenuVisible(false);
-        });
-        // Ana menüye dönünce tekrar göster
-        document.addEventListener('back_to_menu', function() {
-            svgMenuSystem.setSocialMenuVisible(true);
-        });
-    });
 }
 
 // Global instance

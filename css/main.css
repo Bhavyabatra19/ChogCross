@@ -111,7 +111,8 @@ input, input:before, input:after {
     padding: 0;
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    padding-top: 0;
     background: #000;
 }
 
@@ -132,13 +133,15 @@ input, input:before, input:after {
     width: 100vw;
     height: auto;
     max-width: 1200px;
-    max-height: 600px;
-    aspect-ratio: 2 / 1;
+    max-height: 700px;
+    aspect-ratio: 1200 / 700;
     object-fit: contain;
     object-position: center;
     background: #000;
     margin: 0 auto;
     z-index: 1;
+    /* Play butonu için aktif, bet UI için devre dışı */
+    pointer-events: auto;
     /* Advanced rendering optimizations */
     image-rendering: auto;
     image-rendering: smooth;
@@ -305,26 +308,8 @@ input, input:before, input:after {
     transform: scale(0.95);
 }
 
-/* Fixed UI Container */
-#ui-container {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    height: 60px; /* Bet UI yüksekliğini 80px'den 60px'e düşürdük */
-    background: linear-gradient(135deg, #1a0b3d 0%, #2d1b69 50%, #4a0e4e 100%);
-    border-top: 2px solid #FFD700;
-    box-shadow: 0 -3px 15px rgba(0,0,0,0.5);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    visibility: visible; /* Her zaman görünür */
-    /* Ensure proper centering */
-    margin: 0;
-    padding: 0;
-}
+/* Fixed UI Container - DISABLED (canvas UI moved inside center panel) */
+#ui-container { display: none !important; }
 
 /* UI Panels */
 .ui-panel {
@@ -359,6 +344,147 @@ input, input:before, input:after {
     max-width: 1200px !important;
     margin: 0 auto !important;
     padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+
+/* Canvas Bet UI positioning */
+#betting-ui.canvas-positioned {
+    position: absolute !important;
+    bottom: calc(70px * var(--canvas-scale, 1)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 2000 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(5px) !important;
+    transform-origin: bottom center !important;
+    /* Canvas ile birlikte ölçeklenir */
+    transform: scale(var(--canvas-scale, 1)) !important;
+    /* Tıklanabilir olması için */
+    pointer-events: auto !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Center panel içindeki betting UI için özel konumlandırma */
+.center-panel .panel-content #betting-ui.canvas-positioned {
+    position: absolute !important;
+    bottom: calc(70px * var(--canvas-scale, 1)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 2000 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(5px) !important;
+    transform-origin: bottom center !important;
+    transform: scale(var(--canvas-scale, 1)) !important;
+    pointer-events: auto !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Canvas Game UI positioning */
+#game-ui.canvas-positioned {
+    position: absolute !important;
+    bottom: calc(70px * var(--canvas-scale, 1)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 2000 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(5px) !important;
+    transform-origin: bottom center !important;
+    /* Canvas ile birlikte ölçeklenir */
+    transform: scale(var(--canvas-scale, 1)) !important;
+    /* Tıklanabilir olması için */
+    pointer-events: auto !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Center panel içindeki game UI için özel konumlandırma */
+.center-panel .panel-content #game-ui.canvas-positioned {
+    position: absolute !important;
+    bottom: calc(70px * var(--canvas-scale, 1)) !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 2000 !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    backdrop-filter: blur(5px) !important;
+    transform-origin: bottom center !important;
+    transform: scale(var(--canvas-scale, 1)) !important;
+    pointer-events: auto !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Bet UI alanında canvas'ı devre dışı bırak */
+#betting-ui.canvas-positioned::before {
+    content: '';
+    position: absolute;
+    top: calc(-70px * var(--canvas-scale, 1));
+    left: 0;
+    right: 0;
+    height: calc(70px * var(--canvas-scale, 1));
+    z-index: 1999;
+    pointer-events: auto;
+    background: transparent;
+}
+
+/* Game info section styles */
+.game-info-section {
+    margin: 10px 0;
+}
+
+.game-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: space-between;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 80px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.game-info-section .stat-label {
+    font-size: 13px;
+    color: var(--primary-color);
+    margin-bottom: 2px;
+}
+
+.game-info-section .stat-item span:last-child {
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--secondary-color);
 }
 
 .ui-content {
@@ -374,7 +500,7 @@ input, input:before, input:after {
 }
 
 /* Betting UI Styles - Horizontal Layout */
-.bet-section, .difficulty-section {
+.bet-section, .difficulty-section, .play-mode-section {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -395,7 +521,7 @@ input, input:before, input:after {
     white-space: nowrap;
 }
 
-.bet-section label, .difficulty-section label {
+.bet-section label, .difficulty-section label, .play-mode-section label {
     color: #FFFFFF;
     font-family: 'Orbitron', monospace;
     font-size: 18px;
@@ -403,13 +529,18 @@ input, input:before, input:after {
     min-width: 50px;
 }
 
-.bet-controls, .difficulty-controls {
+.bet-controls, .difficulty-controls, .play-mode-controls {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 5px;
 }
 
-.bet-btn, .diff-btn {
+.bet-controls {
+    margin-left: 5px;
+}
+
+.bet-btn, .diff-btn, .mode-btn {
     background: rgba(255,255,255,0.1);
     border: 1px solid #FFD700;
     color: #FFD700;
@@ -424,16 +555,16 @@ input, input:before, input:after {
     height: 40px;
 }
 
-.bet-btn:hover, .diff-btn:hover {
+.bet-btn:hover, .diff-btn:hover, .mode-btn:hover {
     background: rgba(255,215,0,0.2);
     transform: scale(1.05);
 }
 
-.bet-btn:active, .diff-btn:active {
+.bet-btn:active, .diff-btn:active, .mode-btn:active {
     transform: scale(0.95);
 }
 
-.diff-btn.active {
+.diff-btn.active, .mode-btn.active {
     background: #FFD700;
     color: #000;
 }
@@ -1221,7 +1352,7 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 
 /* ===== SVG MENU SYSTEM ===== */
 
-/* SVG Menu Container */
+/* SVG Menu Container - HIDDEN */
 .svg-menu-container {
     position: absolute;
     top: 20px;
@@ -1230,6 +1361,7 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
     width: 80px;
     height: 80px;
     pointer-events: none;
+    display: none; /* Canvas üzerindeki menü gizlendi */
 }
 
 .center-panel .svg-menu-container {
@@ -1587,214 +1719,31 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
     }
 }
 
-/* ===== SOCIAL MENU SYSTEM (LEFT TOP) ===== */
-.social-menu-container {
-    position: absolute;
-    left: 120px;
-    top: 110px;
-    right: auto;
-    z-index: 1000;
-    width: 86px;
-    height: 86px;
-    pointer-events: none;
-}
-.social-menu-button {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 86px;
-    height: 86px;
-    background: transparent;
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.3s ease;
-    box-shadow: none;
-    backdrop-filter: none;
-}
-.social-menu-button:hover {
-    transform: scale(1.1);
-}
-.social-menu-button:active {
-    transform: scale(0.95);
-}
-.social-icon {
-    width: 68px;
-    height: 68px;
-    transition: all 0.3s ease;
-}
-.social-menu-button:hover .social-icon {
-    opacity: 0.8;
-}
-.social-items {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 96px;
-    height: 96px;
-    pointer-events: none;
-}
-.social-item {
-    position: absolute;
-    width: 82px;
-    height: 82px;
-    background: transparent;
-    border: none;
-    border-radius: 41px;
-    cursor: pointer;
-    pointer-events: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    box-shadow: none;
-    opacity: 0;
-    transform: scale(0);
-    color: #000;
-    text-decoration: none;
-    font-family: 'Orbitron', monospace;
-    font-size: 18px;
-    font-weight: 700;
-    background-image: none;
-}
-.social-item-label {
-    display: none;
-}
-.social-item-icon {
-    width: 82px;
-    height: 82px;
-    transition: all 0.3s ease;
-}
-.social-item:hover {
-    background: transparent;
-    border-color: #FFA500;
-}
-.social-item:active {
-    transform: scale(0.95);
-}
-.social-item::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    left: 50%;
-    bottom: -35px;
-    transform: translateX(-50%);
-    background: rgba(0,0,0,0.9);
-    color: #FFD700;
-    padding: 5px 12px;
-    border-radius: 6px;
-    font-family: 'Orbitron', monospace;
-    font-size: 12px;
-    font-weight: 700;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: all 0.3s ease;
-    border: 1px solid #FFD700;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    z-index: 10;
-}
-.social-item:hover::after {
-    opacity: 1;
-    bottom: -40px;
-}
-.social-open .social-item {
-    opacity: 1;
-    transform: scale(1);
-}
-.social-open .social-item:nth-child(1) {
-    transform: translate(110px, 0) scale(1);
-    opacity: 1;
-}
-.social-open .social-item:nth-child(2) {
-    transform: translate(210px, 0) scale(1);
-    opacity: 1;
-}
-.social-open .social-item:nth-child(3) {
-    transform: translate(310px, 0) scale(1);
-    opacity: 1;
-}
-@media (max-width: 768px) {
-    .social-menu-container {
-        top: 45px;
-        left: 30px;
-        width: 60px;
-        height: 60px;
-    }
-    .social-menu-button {
-        width: 60px;
-        height: 60px;
-    }
-    .social-icon {
-        width: 50px;
-        height: 50px;
-    }
-    .social-items {
-        width: 60px;
-        height: 60px;
-    }
-    .social-item {
-        width: 55px;
-        height: 55px;
-        border-radius: 28px;
-    }
-    .social-item-icon {
-        width: 55px;
-        height: 55px;
-    }
-    .social-open .social-item:nth-child(1) {
-        transform: translate(60px, 0) scale(1);
-    }
-    .social-open .social-item:nth-child(2) {
-        transform: translate(115px, 0) scale(1);
-    }
-    .social-open .social-item:nth-child(3) {
-        transform: translate(170px, 0) scale(1);
-    }
-}
-@media (max-width: 480px) {
-    .social-menu-container {
-        top: 35px;
-        left: 15px;
-        width: 45px;
-        height: 45px;
-    }
-    .social-menu-button {
-        width: 45px;
-        height: 45px;
-    }
-    .social-icon {
-        width: 32px;
-        height: 32px;
-    }
-    .social-items {
-        width: 45px;
-        height: 45px;
-    }
-    .social-item {
-        width: 32px;
-        height: 32px;
-        border-radius: 16px;
-    }
-    .social-item-icon {
-        width: 32px;
-        height: 32px;
-    }
-    .social-open .social-item:nth-child(1) {
-        transform: translate(30px, 0) scale(1);
-    }
-    .social-open .social-item:nth-child(2) {
-        transform: translate(60px, 0) scale(1);
-    }
-    .social-open .social-item:nth-child(3) {
-        transform: translate(90px, 0) scale(1);
-    }
+/* ===== MOBILE RESPONSIVE DESIGN ===== */
+
+/* Canvas Responsive Design */
+#canvas {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    object-fit: contain;
 }
 
-/* ===== MOBILE RESPONSIVE DESIGN ===== */
+.center-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.panel-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
 
 /* Mobile Canvas and Layout Optimizations */
 @media (max-width: 768px) {
@@ -1868,6 +1817,25 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
         font-size: 10px;
         padding: 6px 10px;
     }
+    
+    /* Canvas mobile optimizations */
+    #canvas {
+        max-width: 100vw;
+        max-height: calc(100vh - 120px); /* Wallet ve UI için yer bırak */
+        width: auto;
+        height: auto;
+    }
+    
+    .center-panel {
+        min-height: calc(100vh - 120px);
+        padding: 5px;
+    }
+    
+    .panel-content {
+        width: 100%;
+        height: 100%;
+        min-height: 400px; /* Minimum canvas yüksekliği */
+    }
 }
 
 @media (max-width: 480px) {
@@ -1892,6 +1860,23 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
     
     .address-value {
         font-size: 10px;
+    }
+    
+    /* Canvas extra small screen optimizations */
+    #canvas {
+        max-width: 100vw;
+        max-height: calc(100vh - 100px); /* Daha az yer bırak */
+        width: auto;
+        height: auto;
+    }
+    
+    .center-panel {
+        min-height: calc(100vh - 100px);
+        padding: 2px;
+    }
+    
+    .panel-content {
+        min-height: 300px; /* Daha küçük minimum yükseklik */
     }
     
     .ui-content {
@@ -1932,6 +1917,170 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 }
 
 /* ===== OPTIONS PANEL STYLES ===== */
+
+/* Auto Settings Panel */
+.auto-settings-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+    backdrop-filter: blur(5px);
+}
+
+.auto-settings-content {
+    background: linear-gradient(135deg, #1a0b3d, #2d1b69, #4a0e4e);
+    border: 3px solid #FFD700;
+    border-radius: 20px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+    animation: optionsSlideIn 0.3s ease-out;
+}
+
+.auto-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #FFD700;
+}
+
+.auto-settings-header h2 {
+    color: #FFD700;
+    font-family: 'Orbitron', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+.auto-settings-body {
+    margin-bottom: 25px;
+}
+
+.target-platform-section {
+    margin-bottom: 20px;
+}
+
+.target-platform-section label {
+    color: #FFFFFF;
+    font-family: 'Orbitron', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.platform-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.platform-btn {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid #FFD700;
+    color: #FFD700;
+    font-family: 'Orbitron', monospace;
+    font-size: 18px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 40px;
+    height: 40px;
+}
+
+.platform-btn:hover {
+    background: rgba(255,215,0,0.2);
+    transform: scale(1.05);
+}
+
+.platform-btn:active {
+    transform: scale(0.95);
+}
+
+.platform-display {
+    background: rgba(255,255,255,0.9);
+    border: 1px solid #FFD700;
+    color: #000;
+    font-family: 'Orbitron', monospace;
+    font-size: 20px;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 6px;
+    text-align: center;
+    min-width: 60px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.platform-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.platform-info span {
+    color: #FFD700;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.auto-info-section {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+}
+
+.auto-info-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.auto-info-item:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    color: #FFFFFF;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.info-value {
+    color: #FFD700;
+    font-family: 'Orbitron', monospace;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.auto-settings-footer {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
 
 /* Options Panel */
 .options-panel {
@@ -2528,7 +2677,7 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 .middle-row {
     display: flex;
     flex: 1;
-    min-height: 600px;
+    min-height: 700px;
     flex-wrap: nowrap; /* Panellerin aşağı kaymasını önle */
     overflow: hidden; /* Taşan içeriği gizle */
 }
@@ -2553,10 +2702,10 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 }
 
 .left-panel, .right-panel {
-    width: 200px;
-    min-width: 200px;
+    width: 180px;
+    min-width: 180px;
     display: flex; /* Always visible */
-    z-index: 10; /* Panelleri canvas'ın üstünde tut */
+    z-index: 1000; /* Panelleri canvas'ın üstünde tut ama profile drawer'ın altında */
     position: relative;
 }
 
@@ -2577,9 +2726,9 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
     min-width: 600px; /* Minimum width for game canvas */
     min-height: 400px; /* Minimum height for game canvas */
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    padding: 5px; /* Daha az padding */
+    padding: 0; /* Üstten padding kaldırıldı */
     overflow: hidden; /* Taşan içeriği gizle */
 }
 
@@ -2607,6 +2756,7 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 .center-panel .panel-content {
     padding: 0;
     position: relative;
+    overflow: hidden; /* keep canvas + canvas UI inside border on all screens */
 }
 
 /* Panel Headers */
@@ -3108,6 +3258,128 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
     justify-content: center;
 }
 
+/* Left Panel Wallet Container */
+.wallet-container-left {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px;
+    overflow-y: auto;
+}
+
+/* Right Panel SVG Menu - Always Open */
+#svg-menu-container-right {
+    position: relative !important;
+    top: -160px !important;
+    right: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    padding: 10px !important;
+    gap: 5px !important;
+    margin-left: -20px !important; /* Daha fazla sola kaydır */
+}
+
+#svg-menu-button-right {
+    display: none !important; /* Menü butonu gizlendi */
+}
+
+#menu-items-right {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 5px !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+}
+
+#menu-items-right .menu-item {
+    position: relative !important;
+    width: 60px !important;
+    height: 60px !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 30px !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.3s ease !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+    transform: scale(1) !important;
+    color: #000 !important;
+    text-decoration: none !important;
+    font-family: 'Orbitron', monospace !important;
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    background-image: none !important;
+    margin: 0 !important;
+}
+
+#menu-items-right .menu-item-icon {
+    width: 50px !important;
+    height: 50px !important;
+    transition: all 0.3s ease !important;
+}
+
+#menu-items-right .menu-item:hover {
+    background: transparent !important;
+    border: none !important;
+    transform: scale(1.1) !important;
+}
+
+#menu-items-right .menu-item:active {
+    transform: scale(0.95) !important;
+}
+
+#menu-items-right .menu-item::after {
+    content: attr(data-tooltip) !important;
+    position: absolute !important;
+    left: 65px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    background: transparent !important;
+    color: #FFD700 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-family: 'Orbitron', monospace !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    opacity: 1 !important;
+    pointer-events: none !important;
+    transition: all 0.3s ease !important;
+    border: none !important;
+    box-shadow: none !important;
+    z-index: 10 !important;
+    max-width: 80px !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    height: 60px !important;
+}
+
+#menu-items-right .menu-item:hover::after {
+    opacity: 1 !important;
+    left: 65px !important;
+}
+
 /* Mobile responsive for game frame */
 @media (max-width: 1200px) {
     .left-panel, .right-panel {
@@ -3133,8 +3405,8 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 
 @media (max-width: 1024px) {
     .left-panel, .right-panel {
-        width: 120px;
-        min-width: 120px;
+        width: 130px;
+        min-width: 130px;
         display: flex !important; /* Panelleri zorla göster */
     }
     
@@ -3177,8 +3449,8 @@ img, .menu-icon, .social-icon, .menu-item-icon, .social-item-icon {
 
 @media (max-width: 900px) {
     .left-panel, .right-panel {
-        width: 150px;
-        min-width: 150px;
+        width: 120px;
+        min-width: 120px;
     }
     
     .panel-content {

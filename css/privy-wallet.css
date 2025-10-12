@@ -1,18 +1,22 @@
-/* Privy Wallet Component Styles - Ana sayfada her zaman görünür */
+/* Privy Wallet Component Styles - Sol panelde dikey olarak yerleştirilmiş */
 .privy-wallet-container {
-  position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
   width: 100% !important;
-  height: 60px !important;
+  height: auto !important;
+  min-height: 100% !important;
   background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.95) 100%);
-  border-bottom: 2px solid #FFD700;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 8px;
   box-shadow: 0 3px 15px rgba(0,0,0,0.5);
-  z-index: 1002 !important;
+  z-index: 10 !important;
   display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
   transition: all 0.3s ease;
+  padding: 10px;
 }
 
 /* Oyun sayfasında gizli durum */
@@ -46,12 +50,12 @@
 
 .wallet-content {
   width: 100%;
-  max-width: 1200px;
-  padding: 0 20px;
+  padding: 0;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 15px;
 }
 
 .wallet-loading {
@@ -85,9 +89,11 @@
 
 .wallet-status {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .status-indicator {
@@ -310,54 +316,293 @@
   }
 }
 
-/* Wallet Toggle Button Styles */
-.wallet-toggle-btn {
-  font-family: 'Orbitron', monospace;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid #FFD700;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #000000;
-  min-width: 80px;
-  height: 30px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
-  flex-shrink: 0;
+/* Left panel wallet specific styles */
+.wallet-container-left .privy-wallet-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
+    position: relative !important;
+    top: auto !important;
+    left: -14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    padding: 12px !important;
+    border-radius: 8px !important;
+    background: linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.95) 100%) !important;
+    border: none !important;
+    box-shadow: 0 3px 15px rgba(0,0,0,0.5) !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
 }
 
-/* Game UI specific wallet toggle button */
-#game-ui .wallet-toggle-btn {
-  font-size: 11px;
-  padding: 5px 10px;
-  min-width: 70px;
-  height: 28px;
+/* Sol paneldeki wallet yazılarını dar panel için optimize et */
+.wallet-container-left .privy-wallet-container .wallet-status {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
 }
 
-.wallet-toggle-btn:hover {
-  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5);
-  transform: translateY(-1px);
+.wallet-container-left .privy-wallet-container .status-text {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    margin-right: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
-.wallet-toggle-btn:active {
-  transform: translateY(0);
+.wallet-container-left .privy-wallet-container .status-indicator {
+    font-size: 12px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
 }
 
-.wallet-toggle-btn.wallet-hidden {
-  background: linear-gradient(135deg, #FF6666 0%, #CC4444 100%);
-  border-color: #FF6666;
-  color: #ffffff;
+.wallet-container-left .privy-wallet-container .address-value {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    margin-left: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }
 
-.wallet-toggle-btn.wallet-hidden:hover {
-  background: linear-gradient(135deg, #CC4444 0%, #AA2222 100%);
-  box-shadow: 0 4px 12px rgba(255, 102, 102, 0.5);
+.wallet-container-left .privy-wallet-container .profile-toggle-btn {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    padding: 6px 12px !important;
+    border: 1px solid #676FFF !important;
+    border-radius: 4px !important;
+    margin-left: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
 }
+
+/* Sol paneldeki balance ve profit section */
+.wallet-container-left .privy-wallet-container .balance-profit-section {
+    margin-top: 16px !important;
+    padding: 12px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 215, 0, 0.2) !important;
+}
+
+.wallet-container-left .privy-wallet-container .balance-item {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 12px !important;
+}
+
+.wallet-container-left .privy-wallet-container .profit-item {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    margin-bottom: 12px !important;
+}
+
+.wallet-container-left .privy-wallet-container .balance-item:last-child,
+.wallet-container-left .privy-wallet-container .profit-item:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Sol paneldeki sosyal medya linkleri */
+.wallet-container-left .privy-wallet-container .social-links-section {
+    margin-top: 16px !important;
+    padding: 12px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 215, 0, 0.2) !important;
+}
+
+.wallet-container-left .privy-wallet-container .social-links-title {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    color: #FFD700 !important;
+    text-align: center !important;
+    margin-bottom: 6px !important;
+}
+
+.wallet-container-left .privy-wallet-container .social-links-container {
+    display: flex !important;
+    justify-content: space-around !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.wallet-container-left .privy-wallet-container .social-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 0 !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease !important;
+    border: none !important;
+    background: transparent !important;
+}
+
+.wallet-container-left .privy-wallet-container .social-icon-img {
+    width: 24px !important;
+    height: 24px !important;
+    object-fit: contain !important;
+    filter: brightness(0.8) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Twitter/X Link */
+.wallet-container-left .privy-wallet-container .twitter-link:hover {
+    transform: scale(1.1) !important;
+}
+
+.wallet-container-left .privy-wallet-container .twitter-link:hover .social-icon-img {
+    filter: brightness(1.2) !important;
+}
+
+/* Discord Link */
+.wallet-container-left .privy-wallet-container .discord-link:hover {
+    transform: scale(1.1) !important;
+}
+
+.wallet-container-left .privy-wallet-container .discord-link:hover .social-icon-img {
+    filter: brightness(1.2) !important;
+}
+
+/* Website Link */
+.wallet-container-left .privy-wallet-container .website-link:hover {
+    transform: scale(1.1) !important;
+}
+
+.wallet-container-left .privy-wallet-container .website-link:hover .social-icon-img {
+    filter: brightness(1.2) !important;
+}
+
+/* Sol paneldeki online oyuncu sayısı */
+.wallet-container-left .privy-wallet-container .online-players-section {
+    margin-top: 16px !important;
+    padding: 12px !important;
+    background: rgba(0, 0, 0, 0.3) !important;
+    border-radius: 6px !important;
+    border: 1px solid rgba(255, 215, 0, 0.2) !important;
+}
+
+.wallet-container-left .privy-wallet-container .online-players-title {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    color: #FFD700 !important;
+    text-align: center !important;
+    margin-bottom: 6px !important;
+}
+
+.wallet-container-left .privy-wallet-container .online-indicator {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(0, 255, 0, 0.3) !important;
+    border-radius: 12px !important;
+    padding: 6px 12px !important;
+}
+
+.wallet-container-left .privy-wallet-container .green-light {
+    width: 8px !important;
+    height: 8px !important;
+    background: #00FF00 !important;
+    border-radius: 50% !important;
+    animation: pulse-green 2s infinite !important;
+}
+
+.wallet-container-left .privy-wallet-container .player-count {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    color: #FFFFFF !important;
+}
+
+@keyframes pulse-green {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.wallet-container-left .privy-wallet-container .balance-label,
+.wallet-container-left .privy-wallet-container .profit-label {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    color: #ccc !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.wallet-container-left .privy-wallet-container .balance-value {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    color: #FFD700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.wallet-container-left .privy-wallet-container .profit-value {
+    font-size: 14px !important;
+    font-weight: bold !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.wallet-container-left .privy-wallet-container .profit-value.profit-positive {
+    color: #00FF00 !important;
+}
+
+.wallet-container-left .privy-wallet-container .profit-value.profit-negative {
+    color: #FF4444 !important;
+}
+
+.wallet-container-left .wallet-content {
+    width: 100% !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+}
+
+.wallet-container-left .wallet-status {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    flex-wrap: wrap !important;
+    width: 100% !important;
+}
+
+.wallet-container-left .status-text {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+}
+
+.wallet-container-left .address-value {
+    font-size: 10px !important;
+    word-break: break-all !important;
+    max-width: 100% !important;
+}
+
+.wallet-container-left .profile-toggle-btn {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    margin-top: 8px !important;
+}
+
 
 /* Send Modal Styles */
 .send-modal-overlay {
@@ -546,7 +791,7 @@
   position: fixed;
   top: 80px;
   right: 20px;
-  z-index: 10001;
+  z-index: 10005;
   animation: notificationSlideIn 0.3s ease-out;
 }
 
@@ -708,5 +953,619 @@
   
   .notification-message {
     font-size: 13px;
+  }
+}
+
+/* Privy Modal Overlay - Kaldırıldı çünkü login modal kendi overlay'ini kullanıyor */
+
+/* Profile Drawer Styles */
+.profile-drawer {
+  position: fixed;
+  top: 60px;
+  left: 200px; /* Sol panelin sağında konumlandır */
+  width: 350px;
+  max-height: calc(100vh - 80px);
+  background: linear-gradient(135deg, #1a0b3d 0%, #2d1b69 50%, #4a0e4e 100%);
+  border: 2px solid #676FFF;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+  z-index: 99999 !important; /* En üstte görünmesi için yüksek z-index */
+  animation: drawerSlideIn 0.3s ease-out;
+  overflow-y: auto;
+  backdrop-filter: blur(10px);
+}
+
+@keyframes drawerSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.profile-drawer-content {
+  padding: 0;
+}
+
+.profile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 25px;
+  border-bottom: 1px solid #676FFF;
+  background: rgba(103, 111, 255, 0.1);
+}
+
+.profile-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.disconnect-btn-profile:hover {
+  background: #ff3333 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 68, 68, 0.3);
+}
+
+.profile-header h3 {
+  color: #676FFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+}
+
+.close-profile-btn {
+  background: none;
+  border: none;
+  color: #676FFF;
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-profile-btn:hover {
+  background: rgba(103, 111, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.profile-section {
+  padding: 20px 25px;
+  border-bottom: 1px solid rgba(103, 111, 255, 0.2);
+}
+
+.profile-section:last-child {
+  border-bottom: none;
+}
+
+.profile-section h4 {
+  color: #676FFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 15px 0;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.profile-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-input-group input {
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #676FFF;
+  border-radius: 8px;
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.profile-input-group input:focus {
+  outline: none;
+  border-color: #00FF00;
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.profile-input-group input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.stats-grid-detailed {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.stats-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #888;
+  font-size: 14px;
+}
+
+.loading-spinner-small {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #333;
+  border-top: 2px solid #676FFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(103, 111, 255, 0.3);
+}
+
+.stat-label {
+  color: #CCCCCC;
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  color: #FFD700;
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.stat-value.profit-positive {
+  color: #00FF00;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+.stat-value.profit-negative {
+  color: #FF0000;
+  text-shadow: 0 0 8px rgba(255, 0, 0, 0.5);
+}
+
+.wallet-info-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  border: 1px solid rgba(103, 111, 255, 0.2);
+}
+
+.info-label {
+  color: #CCCCCC;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.info-value {
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.info-value.clickable {
+  color: #676FFF;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.info-value.clickable:hover {
+  color: #00FF00;
+  text-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+}
+
+/* Send MON Form in Profile Drawer */
+.send-mon-form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.send-mon-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.send-mon-form .form-group label {
+  color: #676FFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+}
+
+.send-mon-form .address-input,
+.send-mon-form .amount-input {
+  width: 100%;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid #676FFF;
+  border-radius: 6px;
+  color: #FFFFFF;
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.send-mon-form .address-input:focus,
+.send-mon-form .amount-input:focus {
+  outline: none;
+  border-color: #00FF00;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.3);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.send-mon-form .address-input::placeholder,
+.send-mon-form .amount-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.send-mon-form .balance-info {
+  margin-top: 4px;
+  color: #00FF00;
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.send-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.send-mon-form .send-submit-btn {
+  background: linear-gradient(135deg, #00FF00 0%, #00CC00 100%);
+  color: #000000;
+  border: 2px solid #00FF00;
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.send-mon-form .send-submit-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #00CC00 0%, #009900 100%);
+  box-shadow: 0 0 12px rgba(0, 255, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.send-mon-form .send-submit-btn:disabled {
+  background: #666666;
+  border-color: #666666;
+  color: #999999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Profile Drawer Responsive Design */
+@media (max-width: 1200px) {
+  .profile-drawer {
+    left: 160px; /* Küçük ekranlarda sol panel genişliğine göre ayarla */
+  }
+}
+
+@media (max-width: 900px) {
+  .profile-drawer {
+    left: 20px; /* Çok küçük ekranlarda sol kenara yasla */
+    width: calc(100vw - 40px);
+    max-width: 350px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-drawer {
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-width: calc(100vw - 20px);
+    transform: none; /* Mobilde transform'u kaldır */
+  }
+  
+  .profile-header,
+  .profile-section {
+    padding: 15px 20px;
+  }
+  
+  .profile-header h3 {
+    font-size: 16px;
+  }
+  
+  .profile-section h4 {
+    font-size: 14px;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  
+  .stat-item {
+    padding: 8px;
+  }
+  
+  .stat-label {
+    font-size: 10px;
+  }
+  
+  .stat-value {
+    font-size: 12px;
+  }
+  
+  .info-item {
+    padding: 6px 10px;
+  }
+  
+  .info-label,
+  .info-value {
+    font-size: 11px;
+  }
+  
+  .send-mon-form .form-group label {
+    font-size: 11px;
+  }
+  
+  .send-mon-form .address-input,
+  .send-mon-form .amount-input {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+  
+  .send-mon-form .balance-info {
+    font-size: 10px;
+  }
+  
+  .stats-grid-detailed {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  
+  .stats-loading {
+    font-size: 12px;
+    padding: 15px;
+  }
+  
+  .loading-spinner-small {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Login Modal Styles */
+.login-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999 !important; /* En üstte görünmesi için çok yüksek z-index */
+  backdrop-filter: blur(4px);
+  pointer-events: auto !important; /* Tüm etkileşimleri engelle */
+}
+
+.login-modal {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%);
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 350px;
+  width: 85%;
+  box-shadow: 0 15px 35px rgba(139, 92, 246, 0.3), 0 0 20px rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  animation: modalSlideIn 0.4s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-modal::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+  pointer-events: none;
+}
+
+.login-modal-header {
+  text-align: center;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-modal-header h2 {
+  color: #ffffff;
+  margin: 0 0 8px 0;
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Orbitron', monospace;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.5px;
+}
+
+.login-modal-header p {
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+  font-size: 14px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.login-modal-content {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.login-modal-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 10px !important;
+  color: #6D28D9 !important;
+  padding: 12px 24px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  font-family: 'Orbitron', monospace !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  width: 100% !important;
+  margin-top: 16px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  box-shadow: 0 6px 15px rgba(255, 255, 255, 0.2) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.login-modal-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(109, 40, 217, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.login-modal-btn:hover {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.login-modal-btn:hover::before {
+  left: 100%;
+}
+
+.login-modal-btn:active {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 10px rgba(255, 255, 255, 0.2) !important;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(-30px) rotateX(10deg);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotateX(0deg);
+    filter: blur(0px);
+  }
+}
+
+/* Sol paneldeki profile drawer yazılarını dar panel için optimize et */
+.wallet-container-left .privy-wallet-container .profile-drawer h3 {
+    font-size: 14px !important;
+    font-weight: bold !important;
+}
+
+.wallet-container-left .privy-wallet-container .profile-drawer h4 {
+    font-size: 12px !important;
+    font-weight: bold !important;
+}
+
+.wallet-container-left .privy-wallet-container .profile-drawer .info-label {
+    font-size: 11px !important;
+    font-weight: bold !important;
+}
+
+.wallet-container-left .privy-wallet-container .profile-drawer .info-value {
+    font-size: 11px !important;
+    font-weight: bold !important;
+}
+
+.wallet-container-left .privy-wallet-container .profile-drawer .info-value[style*="color: #FFD700"] {
+    font-size: 12px !important;
+    font-weight: bold !important;
+    color: #FFD700 !important;
+}
+
+.wallet-container-left .privy-wallet-container .profile-drawer .disconnect-btn-profile {
+    font-size: 10px !important;
+    font-weight: bold !important;
+    padding: 4px 8px !important;
+    border: 1px solid #ff4444 !important;
+    border-radius: 4px !important;
+}
+
+/* Mobile responsive for login modal */
+@media (max-width: 768px) {
+  .login-modal {
+    padding: 24px 20px;
+    margin: 20px;
+    max-width: none;
+    width: calc(100% - 40px);
+    border-radius: 14px;
+  }
+  
+  .login-modal-header h2 {
+    font-size: 20px;
+    letter-spacing: 0.3px;
+  }
+  
+  .login-modal-header p {
+    font-size: 13px;
+  }
+  
+  .login-modal-btn {
+    padding: 10px 20px !important;
+    font-size: 14px !important;
+    letter-spacing: 0.3px !important;
   }
 }

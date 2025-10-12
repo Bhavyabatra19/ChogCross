@@ -309,11 +309,33 @@ s_oSpriteLibrary.addSprite("foreground", "./sprites/Layers/Foreground.png");
     };
     
     this.gotoMenu = function () {
-        if (window.svgMenuSystem && window.svgMenuSystem.setSocialMenuVisible) {
-            window.svgMenuSystem.setSocialMenuVisible(true);
+        // Hide canvas betting UI and game UI when going to menu
+        if (s_oInterface) {
+            // Use dedicated hard hide for menu to prevent re-show
+            if (s_oInterface.hideAllUIForMenu) {
+                s_oInterface.hideAllUIForMenu();
+            } else {
+                s_oInterface.hideCanvasBettingUI();
+                s_oInterface.hideGameUI();
+            }
         }
+
+        // As an extra guard, explicitly hide betting-ui DOM if still present
+        try {
+            var bettingUIEl = document.getElementById('betting-ui');
+            if (bettingUIEl) {
+                bettingUIEl.classList.remove('canvas-positioned');
+                bettingUIEl.style.display = 'none';
+                bettingUIEl.style.visibility = 'hidden';
+                bettingUIEl.style.pointerEvents = 'none';
+            }
+        } catch (e) { console.log('Force hide betting-ui failed:', e && e.message ? e.message : e); }
+        
         _oMenu = new CMenu();
         _iState = STATE_MENU;
+        
+        // Restart background music when returning to menu
+        this.restartBackgroundMusic();
         
         // Re-initialize wallet UI when returning to menu
         setTimeout(function() {
@@ -379,10 +401,40 @@ s_oSpriteLibrary.addSprite("foreground", "./sprites/Layers/Foreground.png");
         if (window.svgMenuSystem && window.svgMenuSystem.setSocialMenuVisible) {
             window.svgMenuSystem.setSocialMenuVisible(false);
         }
-        _oGame = new CGame(_oData, iLevel || 1);
+        // Ensure state is set BEFORE creating game so UI gating can detect STATE_GAME
         _iState = STATE_GAME;
+        _oGame = new CGame(_oData, iLevel || 1);
 
         $(s_oMain).trigger("start_session");
+    };
+
+    // Expose current state for UI gating (used by CInterface.showCanvasBettingUI)
+    this.getState = function () {
+        return _iState;
+    };
+    
+    /**
+     * Restart background music
+     */
+    this.restartBackgroundMusic = function() {
+        console.log("🎵 Restarting background music...");
+        
+        // Stop any existing soundtrack first
+        if (typeof stopSound === 'function') {
+            stopSound("soundtrack");
+        }
+        
+        // Start background music
+        if (!isIOS()) {
+            try {
+                s_oSoundTrack = playSound("soundtrack", 0.2, true);
+                console.log("✅ Background music restarted successfully");
+            } catch(e) {
+                console.error("❌ Failed to restart background music:", e);
+            }
+        } else {
+            console.log("🔇 Background music disabled for iOS");
+        }
     };
 
     this.stopUpdate = function(){
@@ -466,7 +518,7 @@ var s_bStorageAvailable = true;
 var s_aSounds;
 
 var CANVAS_REF_WIDTH = 1200;
-var CANVAS_REF_HEIGHT = 600;
+var CANVAS_REF_HEIGHT = (window.gameConfig && window.gameConfig.get('canvas.height')) ? window.gameConfig.get('canvas.height') : 700;
 var g_canvasScale = 1;
 
 function resizeGameCanvas() {
@@ -484,8 +536,8 @@ function resizeGameCanvas() {
         const maxWidth = panelRect.width - padding;
         const maxHeight = panelRect.height - padding;
         
-        // Canvas'ın orijinal aspect ratio'sunu koru (1200x600 = 2:1)
-        const aspectRatio = 2;
+        // Canvas'ın orijinal aspect ratio'sunu koru (config tabanlı)
+        const aspectRatio = CANVAS_REF_WIDTH / CANVAS_REF_HEIGHT;
         
         let newWidth = maxWidth;
         let newHeight = maxWidth / aspectRatio;
@@ -496,13 +548,18 @@ function resizeGameCanvas() {
             newWidth = newHeight * aspectRatio;
         }
         
-        // Canvas boyutlarını ayarla - daha agresif boyutlandırma
+        // Canvas boyutlarını ayarla - responsive boyutlandırma
         canvas.style.width = newWidth + 'px';
         canvas.style.height = newHeight + 'px';
-        canvas.style.maxWidth = 'none';
-        canvas.style.maxHeight = 'none';
+        canvas.style.maxWidth = '100%';
+        canvas.style.maxHeight = '100%';
+        canvas.style.objectFit = 'contain';
         
         console.log(`📐 Canvas resized: ${newWidth}x${newHeight} (panel: ${panelRect.width}x${panelRect.height})`);
+        
+        // Canvas scale'i CSS variable olarak ayarla (bet UI için)
+        var canvasScale = newWidth / CANVAS_REF_WIDTH;
+        document.documentElement.style.setProperty('--canvas-scale', canvasScale);
         
         // CreateJS stage'i güncelle
         if (typeof s_oStage !== 'undefined' && s_oStage) {
@@ -528,13 +585,27 @@ function resizeGameCanvas() {
         canvas.style.height = h + 'px';
         g_canvasScale = w / CANVAS_REF_WIDTH;
         
+        // Canvas scale'i CSS variable olarak ayarla (bet UI için)
+        document.documentElement.style.setProperty('--canvas-scale', g_canvasScale);
+        
         // Update CreateJS stage if available
         if (typeof s_oStage !== 'undefined' && s_oStage) {
             s_oStage.update();
         }
     }
 }
-window.addEventListener('resize', resizeGameCanvas);
+// Debounced resize to avoid thrashing parallax/camera during gameplay
+(function(){
+    var _resizeTimer = null;
+    function debouncedResize(){
+        if (_resizeTimer) clearTimeout(_resizeTimer);
+        _resizeTimer = setTimeout(function(){
+            _resizeTimer = null;
+            resizeGameCanvas();
+        }, 120);
+    }
+    window.addEventListener('resize', debouncedResize);
+})();
 // Oyun başlatılırken de çağır
 setTimeout(resizeGameCanvas, 100);
 // Daha sık çağır

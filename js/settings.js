@@ -1,6 +1,7 @@
 // Configuration-based settings - using GameConfig system
 var CANVAS_WIDTH = window.gameConfig ? window.gameConfig.get('canvas.width') : 1200;
-var CANVAS_HEIGHT = window.gameConfig ? window.gameConfig.get('canvas.height') : 600;
+// Preserve original visual baseline: if height > 700, keep PLATFORM_Y baseline at 620
+var CANVAS_HEIGHT = window.gameConfig ? window.gameConfig.get('canvas.height') : 800;
 
 var EDGEBOARD_X = 40;
 var EDGEBOARD_Y = 260;
@@ -25,7 +26,12 @@ var ON_DRAG_END = 5;
 var ON_COLLISION = 6;
 
 // Responsive pozisyon değişkenleri - Configuration'dan al
-var PLATFORM_Y = window.gameConfig ? window.gameConfig.get('platform.y') : (CANVAS_HEIGHT - 80);
+var PLATFORM_Y = (function(){
+    var cfgY = window.gameConfig ? window.gameConfig.get('platform.y') : null;
+    if (cfgY != null) return cfgY;
+    // If canvas taller than 700, keep baseline at 620 to avoid visual shift
+    return CANVAS_HEIGHT > 700 ? 620 : (CANVAS_HEIGHT - 80);
+})();
 var CHARACTER_Y = window.gameConfig ? window.gameConfig.get('character.startY') : (PLATFORM_Y - 30);
 var FIRST_PLATFORM_Y = window.gameConfig ? (CHARACTER_Y - 55) : (CHARACTER_Y - 55);
 

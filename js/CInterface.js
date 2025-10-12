@@ -22,6 +22,22 @@ function CInterface(iBestScore) {
     var _oJumpsLeftText; // Kalan atlama sayısı text'i
     var _oJumpsLeftOutline; // Kalan atlama sayısı outline'ı
     
+    // Canvas-native UI mode flag
+    var USE_CREATEJS_CANVAS_UI = true;
+    
+    // CreateJS-based Canvas UIs
+    var _oCanvasBetUIContainer = null;
+    var _oCanvasGameUIContainer = null;
+    // Bet UI elements
+    var _betBg, _betLabelText, _betValueText, _betMinusBtn, _betPlusBtn;
+    var _modeLabelText, _easyBtn, _hardBtn;
+    var _playModeLabelText, _manualBtn, _autoBtn;
+    var _startBtn, _homeBtn, _recoveryBtn;
+    // Game UI elements
+    var _gameBg, _gBetLabel, _gBetValue, _gModeLabel, _gModeValue;
+    var _gMultLabel, _gMultValue, _gWinLabel, _gWinValue, _gJumpsLabel, _gJumpsValue;
+    var _cashoutBtn, _homeGameBtn;
+    
     // Betting UI elements
     var _oBettingPanel;
     var _oBetAmountText;
@@ -33,11 +49,18 @@ function CInterface(iBestScore) {
     var _oStartGameButton;
     var _bBettingUIVisible = false;
     var _sCurrentDifficulty = "easy"; // Track current difficulty
+    var _bAutoMode = false; // Auto mode status
     var _oCurrentSelectionText; // Reference to current selection display
+    
+    // Canvas Bet UI visibility flag
+    var _bCanvasBettingUIVisible = false;
     
     this._init = function (iBestScore) {
         _iBestScore = iBestScore;
         // Exit butonu kaldırıldı
+        
+        // Initialize auto mode listeners
+        this._addAutoModeListeners();
         
         // HitArea - oyun alanı için dokunma algılama
         _oHitArea = new createjs.Shape();
@@ -142,6 +165,159 @@ function CInterface(iBestScore) {
         // Jumps left güncelleme fonksiyonu boş bırakıldı
     };
     
+    // Canvas Betting UI functions - Move HTML UI to canvas area
+    this.showCanvasBettingUI = function(iBetAmount, iLevel) {
+        if (USE_CREATEJS_CANVAS_UI) {
+            _bCanvasBettingUIVisible = true;
+            this._showCanvasBetUI(iBetAmount);
+            return;
+        }
+        console.log("=== showCanvasBettingUI called ===");
+        console.log("Bet amount:", iBetAmount, "Level:", iLevel);
+        console.log("Already visible:", _bCanvasBettingUIVisible);
+        
+        // Force hide game UI first if it's showing
+        if (_bGameUIVisible) {
+            console.log("Game UI is visible, hiding it first...");
+            this.hideGameUI();
+        }
+        
+        // Force show UI regardless of flag state
+        _bCanvasBettingUIVisible = true;
+        
+        // Get the existing HTML betting UI
+        var bettingUI = document.getElementById('betting-ui');
+        if (!bettingUI) {
+            console.error("Betting UI element not found!");
+            return;
+        }
+        
+        // Apply 100px right shift to betting UI sections
+        setTimeout(function() {
+            var betSection = bettingUI.querySelector('.bet-section');
+            var difficultySection = bettingUI.querySelector('.difficulty-section');
+            if (betSection) {
+                betSection.style.marginLeft = '100px';
+            }
+            if (difficultySection) {
+                difficultySection.style.marginLeft = '100px';
+            }
+        }, 100);
+
+        // Ensure betting UI is inside center panel so the border wraps it together with canvas
+        try {
+            var centerPanelContent = document.querySelector('#center-panel .panel-content');
+            if (centerPanelContent && bettingUI.parentElement !== centerPanelContent) {
+                centerPanelContent.appendChild(bettingUI);
+            }
+        } catch (e) { console.log('Move betting-ui into center-panel failed:', e && e.message ? e.message : e); }
+        
+        // Position the HTML UI at the bottom of the canvas (only in game state)
+        if (typeof s_oMain !== 'undefined' && s_oMain && s_oMain.getState && s_oMain.getState() === STATE_GAME) {
+            bettingUI.classList.add('canvas-positioned');
+            bettingUI.style.display = 'flex';
+            bettingUI.style.visibility = 'visible';
+        } else {
+            // If not in game, ensure hidden (safety)
+            bettingUI.classList.remove('canvas-positioned');
+            bettingUI.style.display = 'none';
+            bettingUI.style.visibility = 'hidden';
+            bettingUI.style.pointerEvents = 'none';
+            _bCanvasBettingUIVisible = false;
+            // Retry once shortly in case state flips to GAME right after Play
+            try {
+                var self = this;
+                setTimeout(function(){
+                    if (typeof s_oMain !== 'undefined' && s_oMain && s_oMain.getState && s_oMain.getState() === STATE_GAME) {
+                        self.showCanvasBettingUI(iBetAmount, iLevel);
+                    }
+                }, 150);
+            } catch(_) {}
+            return;
+        }
+        
+        // Force CSS to ensure visibility
+        bettingUI.style.opacity = '1';
+        bettingUI.style.pointerEvents = 'auto';
+        
+        // Update bet amount display
+        this.updateBetAmount(iBetAmount);
+        
+        // Update difficulty buttons to show initial state
+        this.updateDifficultyButtons();
+        
+        // Add event listeners
+        console.log("🔧 About to call _addBettingEventListeners...");
+        this._addBettingEventListeners();
+        
+        // Add auto mode listeners for betting UI
+        this._addAutoModeListeners();
+        console.log("🔧 _addBettingEventListeners called");
+        
+        
+        
+        // Update risk display for current difficulty
+        this.updateRiskDisplay();
+        
+        // Show side panels
+        if (window.sidePanels) {
+            window.sidePanels.setVisible(true);
+            window.sidePanels.setDifficulty(_sCurrentDifficulty);
+            window.sidePanels.setBetAmount(iBetAmount);
+            console.log(`💰 Bet amount ${iBetAmount} set in SidePanels`);
+        }
+        
+        console.log("=== Canvas Betting UI setup complete ===");
+        
+        // Final check - ensure UI is actually visible
+        console.log("Final UI state check:");
+        console.log("- Classes:", bettingUI.className);
+        console.log("- Display:", bettingUI.style.display);
+        console.log("- Visibility:", bettingUI.style.visibility);
+        console.log("- Opacity:", bettingUI.style.opacity);
+        console.log("- Computed display:", window.getComputedStyle(bettingUI).display);
+    };
+    
+    this.hideCanvasBettingUI = function() {
+        if (USE_CREATEJS_CANVAS_UI) {
+            this._hideCanvasBetUI();
+            _bCanvasBettingUIVisible = false;
+            return;
+        }
+        if (!_bCanvasBettingUIVisible) return;
+        
+        _bCanvasBettingUIVisible = false;
+        
+        // Hide betting UI
+        var bettingUI = document.getElementById('betting-ui');
+        if (bettingUI) {
+            bettingUI.classList.remove('canvas-positioned');
+            bettingUI.style.display = 'none';
+        }
+        
+        // Remove event listeners
+        this._removeBettingEventListeners();
+        
+        
+        // Hide side panels
+        if (window.sidePanels) {
+            window.sidePanels.setVisible(false);
+        }
+        
+        console.log("Canvas Betting UI hidden");
+    };
+    
+    // Canvas bet UI helper functions
+    this.updateCanvasBetAmount = function(iBetAmount) {
+        // Not needed for HTML UI
+        console.log("updateCanvasBetAmount called with:", iBetAmount);
+    };
+    
+    this.updateCanvasDifficultyButtons = function() {
+        // Not needed for HTML UI
+        console.log("updateCanvasDifficultyButtons called");
+    };
+
     // Betting UI functions - Now using HTML elements
     this.showBettingUI = function(iBetAmount, iLevel) {
         console.log("=== showBettingUI called ===");
@@ -192,14 +368,10 @@ function CInterface(iBestScore) {
         // Add event listeners
         this._addBettingEventListeners();
         
-        // Wallet toggle listener'ını ekle
-        this._addWalletToggleListener();
         
         // Recovery button removed from betting UI - now handled in start game dialog only
         // this._checkForActiveRound(); // REMOVED
         
-        // Wallet toggle butonunu ayarla (başlangıçta wallet görünür)
-        this._updateWalletToggleButton();
         
         // Update risk display for current difficulty
         this.updateRiskDisplay();
@@ -234,8 +406,6 @@ function CInterface(iBestScore) {
         // Remove event listeners
         this._removeBettingEventListeners();
         
-        // Wallet toggle listener'larını da temizle
-        this._removeWalletToggleListeners();
         
         // Hide side panels
         if (window.sidePanels) {
@@ -255,6 +425,9 @@ function CInterface(iBestScore) {
         e.preventDefault();
         e.stopPropagation();
         console.log("=== BET MINUS CLICKED ===");
+        console.log("Event target:", e.target);
+        console.log("s_oGame exists:", !!s_oGame);
+        console.log("s_oGame.decreaseBet exists:", !!(s_oGame && s_oGame.decreaseBet));
         if (s_oGame && s_oGame.decreaseBet) {
             console.log("Calling s_oGame.decreaseBet()");
             s_oGame.decreaseBet();
@@ -266,10 +439,17 @@ function CInterface(iBestScore) {
     
     this._betPlusHandler = function(e) {
         e.preventDefault();
-        console.log("Bet plus clicked!");
+        e.stopPropagation();
+        console.log("=== BET PLUS CLICKED ===");
+        console.log("Event target:", e.target);
+        console.log("s_oGame exists:", !!s_oGame);
+        console.log("s_oGame.increaseBet exists:", !!(s_oGame && s_oGame.increaseBet));
         if (s_oGame && s_oGame.increaseBet) {
+            console.log("Calling s_oGame.increaseBet()");
             s_oGame.increaseBet();
             s_oInterface.updateCurrentSelection(); // UI'yi güncelle
+        } else {
+            console.log("s_oGame.increaseBet not available");
         }
     };
     
@@ -327,7 +507,9 @@ function CInterface(iBestScore) {
             return;
         }
         
-        console.log("Start game clicked!");
+        console.log("=== START GAME CLICKED ===");
+        console.log("Event target:", e.target);
+        console.log("s_oGame exists:", !!s_oGame);
         
         // Stop any existing music and start fresh
         console.log("🎵 Stopping existing music and starting fresh...");
@@ -427,21 +609,86 @@ function CInterface(iBestScore) {
         }
     };
 
+    // Event handlers for betting UI
+    this._betMinusHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (s_oGame && s_oGame.decreaseBet) {
+            s_oGame.decreaseBet();
+            s_oInterface.updateCurrentSelection();
+        }
+    };
+    
+    this._betPlusHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (s_oGame && s_oGame.increaseBet) {
+            s_oGame.increaseBet();
+            s_oInterface.updateCurrentSelection();
+        }
+    };
+    
+    this._startGameHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (s_oGame && s_oGame.startGameplay) {
+            s_oGame.startGameplay();
+        }
+    };
+    
+    this._easyModeHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _sCurrentDifficulty = 'easy';
+        if (s_oGame && s_oGame.setDifficulty) {
+            s_oGame.setDifficulty('easy');
+        }
+        // Update betting UI visuals
+        s_oInterface.updateDifficultyButtons();
+        s_oInterface.updateRiskDisplay();
+        // Update left panel live stats risk
+        if (window.sidePanels && typeof window.sidePanels.setDifficulty === 'function') {
+            window.sidePanels.setDifficulty('easy');
+        }
+    };
+    
+    this._hardModeHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        _sCurrentDifficulty = 'hard';
+        if (s_oGame && s_oGame.setDifficulty) {
+            s_oGame.setDifficulty('hard');
+        }
+        // Update betting UI visuals
+        s_oInterface.updateDifficultyButtons();
+        s_oInterface.updateRiskDisplay();
+        // Update left panel live stats risk
+        if (window.sidePanels && typeof window.sidePanels.setDifficulty === 'function') {
+            window.sidePanels.setDifficulty('hard');
+        }
+    };
+    
+    this._backMenuHandler = function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Hide both UIs proactively
+        if (s_oInterface) {
+            try { s_oInterface.hideGameUI(); } catch(_) {}
+            try { s_oInterface.hideCanvasBettingUI(); } catch(_) {}
+        }
+        if (s_oMain && s_oMain.gotoMenu) {
+            s_oMain.gotoMenu();
+        }
+    };
+
     // Add event listeners for HTML betting UI
     this._addBettingEventListeners = function() {
         var self = this;
         
-        console.log("=== Adding betting event listeners ===");
-        console.log("Current bet amount:", _iBetAmount);
-        console.log("Current difficulty:", _sCurrentDifficulty);
-        
         // Bet amount controls
         var betMinusBtn = document.getElementById('bet-minus');
         if (betMinusBtn) {
-            console.log("Adding click listener to bet-minus button");
             betMinusBtn.addEventListener('click', this._betMinusHandler);
-        } else {
-            console.error("bet-minus button not found!");
         }
         
         var betPlusBtn = document.getElementById('bet-plus');
@@ -562,6 +809,29 @@ function CInterface(iBestScore) {
         
         console.log("=== All betting event listeners removed ===");
     };
+
+    // Hide ALL UIs when navigating to menu (no restore)
+    this.hideAllUIForMenu = function() {
+        try {
+            // Hide game UI without restoring betting UI
+            _bGameUIVisible = false;
+            // Hide betting UI hard
+            var bettingUI = document.getElementById('betting-ui');
+            if (bettingUI) {
+                bettingUI.classList.remove('canvas-positioned');
+                bettingUI.style.display = 'none';
+                bettingUI.style.visibility = 'hidden';
+                bettingUI.style.pointerEvents = 'none';
+            }
+            _bCanvasBettingUIVisible = false;
+            // Clean listeners to avoid re-adding on menu
+            this._removeBettingEventListeners();
+            this._removeWalletToggleListeners && this._removeWalletToggleListeners();
+            console.log('Canvas Betting UI hidden (menu)');
+        } catch (e) {
+            console.log('hideAllUIForMenu error:', e && e.message ? e.message : e);
+        }
+    };
     
     // Update difficulty button states
     // Update difficulty button states
@@ -628,6 +898,9 @@ function CInterface(iBestScore) {
             betDisplay.textContent = iBetAmount.toFixed(1) + " MON";
         }
         
+        // Update canvas bet amount too (not needed for HTML UI)
+        // this.updateCanvasBetAmount(iBetAmount);
+        
         this.updateCurrentSelection();
     };
     
@@ -639,34 +912,94 @@ function CInterface(iBestScore) {
     var _oCashoutButton;
     var _bGameUIVisible = false;
     
+    // Auto mode event listeners
+    var _autoModeListeners = [];
+    
     // Show game UI during gameplay - Now using HTML elements
     this.showGameUI = function(iBetAmount, sDifficulty, fMultiplier) {
+        if (USE_CREATEJS_CANVAS_UI) {
+            this._showCanvasGameUI(iBetAmount, sDifficulty, fMultiplier);
+            return;
+        }
         console.log("showGameUI called with:", iBetAmount, sDifficulty, fMultiplier);
         
-        // Ensure UI container is visible
-        var uiContainer = document.getElementById('ui-container');
-        if (uiContainer) {
-            uiContainer.classList.add('game-active');
+        // Transform canvas betting UI to game UI instead of showing separate UI
+        var bettingUI = document.getElementById('betting-ui');
+        if (!bettingUI) {
+            console.error("Betting UI not found!");
+            return;
         }
         
-        // Hide betting UI and show game UI
-        document.getElementById('betting-ui').style.display = 'none';
-        document.getElementById('game-ui').style.display = 'flex';
+        // Hide betting controls and show game info
+        var betSection = bettingUI.querySelector('.bet-section');
+        var difficultySection = bettingUI.querySelector('.difficulty-section');
+        var actionButtons = bettingUI.querySelector('.action-buttons');
         
-        // Show game UI in frame
-        if (window.gameFrameManager) {
-            window.gameFrameManager.showGameUI();
+        if (betSection) betSection.style.display = 'none';
+        if (difficultySection) difficultySection.style.display = 'none';
+        
+        // Create or update game info section
+        var gameInfoSection = bettingUI.querySelector('.game-info-section');
+        if (!gameInfoSection) {
+            gameInfoSection = document.createElement('div');
+            gameInfoSection.className = 'game-info-section';
+            gameInfoSection.innerHTML = `
+                <div class="game-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Bet:</span>
+                        <span id="canvas-game-bet">${iBetAmount} MON</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Mode:</span>
+                        <span id="canvas-game-mode">${sDifficulty.toUpperCase()}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Multiplier:</span>
+                        <span id="canvas-game-multiplier">${fMultiplier.toFixed(2)}x</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Winnings:</span>
+                        <span id="canvas-game-winnings">${(iBetAmount * fMultiplier).toFixed(2)} MON</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Jumps:</span>
+                        <span id="canvas-game-jumps">0</span>
+                    </div>
+                </div>
+            `;
+            bettingUI.querySelector('.ui-content').insertBefore(gameInfoSection, actionButtons);
+            
+            // Apply 100px right shift to game info section
+            gameInfoSection.style.marginLeft = '100px';
+            
+            // Also apply to individual stat items
+            setTimeout(function() {
+                var statItems = gameInfoSection.querySelectorAll('.stat-item');
+                statItems.forEach(function(item) {
+                    item.style.marginLeft = '100px';
+                });
+            }, 50);
+        } else {
+            // Update existing game info
+            document.getElementById('canvas-game-bet').textContent = iBetAmount + " MON";
+            document.getElementById('canvas-game-mode').textContent = sDifficulty.toUpperCase();
+            document.getElementById('canvas-game-multiplier').textContent = fMultiplier.toFixed(2) + "x";
+            document.getElementById('canvas-game-winnings').textContent = (iBetAmount * fMultiplier).toFixed(2) + " MON";
+            document.getElementById('canvas-game-jumps').textContent = "0";
         }
         
-        // Update game info
-        document.getElementById('game-bet').textContent = iBetAmount + " MON";
-        document.getElementById('game-mode').textContent = sDifficulty.toUpperCase();
-        document.getElementById('game-multiplier').textContent = fMultiplier.toFixed(2) + "x";
-        document.getElementById('game-winnings').textContent = (iBetAmount * fMultiplier).toFixed(2) + " MON";
-        document.getElementById('game-jumps').textContent = "0";
+        // Update action buttons for game mode
+        if (actionButtons) {
+            actionButtons.innerHTML = `
+                <button id="cashout-btn" class="action-btn primary">CASHOUT</button>
+                <button id="back-menu-game" class="action-btn secondary">HOME</button>
+            `;
+        }
         
-        // Add cashout event listener with state management
+        // Add event listeners for new buttons
         var self = this;
+        
+        // Cashout button
         var cashoutBtn = document.getElementById('cashout-btn');
         if (cashoutBtn) {
             // Remove existing listeners to prevent duplicates
@@ -708,18 +1041,148 @@ function CInterface(iBestScore) {
             cashoutBtn.style.cursor = 'not-allowed';
         }
         
+        // HOME button
+        var backMenuGameBtn = document.getElementById('back-menu-game');
+        if (backMenuGameBtn) {
+            backMenuGameBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (s_oInterface) {
+                    s_oInterface.hideGameUI();
+                    s_oInterface.hideCanvasBettingUI();
+                }
+                if (s_oMain && s_oMain.gotoMenu) {
+                    s_oMain.gotoMenu();
+                }
+            });
+        }
+        
         // Add keyboard support
         this._addGameKeyboardEvents();
+        
+        // Add canvas-positioned class for centering
+        bettingUI.classList.add('canvas-positioned');
+        
+        // Apply 100px right shift to game UI sections
+        setTimeout(function() {
+            var gameInfoSection = bettingUI.querySelector('.game-info-section');
+            if (gameInfoSection) {
+                gameInfoSection.style.marginLeft = '100px';
+                
+                // Also apply to individual stat items
+                var statItems = gameInfoSection.querySelectorAll('.stat-item');
+                statItems.forEach(function(item) {
+                    item.style.marginLeft = '100px';
+                });
+            }
+            
+            // Also apply to static game UI
+            var staticGameUI = document.getElementById('game-ui');
+            if (staticGameUI) {
+                var gameInfo = staticGameUI.querySelector('.game-info');
+                var infoItems = staticGameUI.querySelectorAll('.info-item');
+                if (gameInfo) {
+                    gameInfo.style.marginLeft = '100px';
+                }
+                infoItems.forEach(function(item) {
+                    item.style.marginLeft = '100px';
+                });
+            }
+        }, 100);
         
         _bGameUIVisible = true;
         console.log("Game UI should now be visible with working cashout button");
     };
+    
+    // Hide game UI and restore betting UI
+    this.hideGameUI = function() {
+        if (USE_CREATEJS_CANVAS_UI) {
+            // Guard: do not hide during active gameplay (e.g., on jump)
+            try {
+                var inMenu = (typeof s_oMain !== 'undefined' && s_oMain && s_oMain.getState && s_oMain.getState() === STATE_MENU);
+                var isOver = (typeof s_oGame !== 'undefined' && s_oGame && s_oGame.isGameOver && s_oGame.isGameOver());
+                if (!inMenu && !isOver) {
+                    return;
+                }
+            } catch(_) {}
+
+            this._hideCanvasGameUI();
+            // Return to betting bar when exiting game UI
+            if (_bCanvasBettingUIVisible) {
+                this._showCanvasBetUI(_iBetAmount || 1);
+            }
+            return;
+        }
+        console.log("hideGameUI called - restoring betting UI");
+        console.log("Current _bGameUIVisible:", _bGameUIVisible);
+        // If game UI is not visible, do not restore betting UI to avoid unwanted show on menu
+        if (!_bGameUIVisible) {
+            return;
+        }
+        
+        var bettingUI = document.getElementById('betting-ui');
+        if (!bettingUI) {
+            console.error("Betting UI not found!");
+            return;
+        }
+        
+        // Show betting controls and hide game info
+        var betSection = bettingUI.querySelector('.bet-section');
+        var difficultySection = bettingUI.querySelector('.difficulty-section');
+        var actionButtons = bettingUI.querySelector('.action-buttons');
+        var gameInfoSection = bettingUI.querySelector('.game-info-section');
+        
+        if (betSection) {
+            betSection.style.display = 'flex';
+            betSection.style.marginLeft = '100px';
+        }
+        if (difficultySection) {
+            difficultySection.style.display = 'flex';
+            difficultySection.style.marginLeft = '100px';
+        }
+        if (gameInfoSection) gameInfoSection.remove();
+        
+        // Restore original action buttons
+        if (actionButtons) {
+            actionButtons.innerHTML = `
+                <button id="recovery-funds" class="action-btn recovery" style="display: none;">🚨 RECOVER FUNDS</button>
+                <button id="start-game" class="action-btn primary">START GAME</button>
+                <button id="back-menu" class="action-btn secondary">HOME</button>
+            `;
+        }
+        
+        // Re-add betting event listeners
+        this._addBettingEventListeners();
+        
+        // Ensure canvas betting UI is visible
+        bettingUI.classList.add('canvas-positioned');
+        bettingUI.style.display = 'flex';
+        bettingUI.style.visibility = 'visible';
+        
+        _bGameUIVisible = false;
+        _bCanvasBettingUIVisible = true;
+        console.log("Betting UI restored and canvas UI shown");
+    };
     // Update game UI during gameplay
     this.updateGameUI = function(fMultiplier, fWinnings, iJumps) {
+        if (USE_CREATEJS_CANVAS_UI) {
+            if (_oCanvasGameUIContainer && _oCanvasGameUIContainer.visible) {
+                if (_gMultValue) _gMultValue.text = fMultiplier.toFixed(2) + "x";
+                if (_gWinValue) _gWinValue.text = fWinnings.toFixed(2) + " MON";
+                if (_gJumpsValue) _gJumpsValue.text = String(iJumps);
+                s_oStage.update();
+            }
+            return;
+        }
         if (_bGameUIVisible) {
-            document.getElementById('game-multiplier').textContent = fMultiplier.toFixed(2) + "x";
-            document.getElementById('game-winnings').textContent = fWinnings.toFixed(2) + " MON";
-            document.getElementById('game-jumps').textContent = iJumps;
+            // Update canvas game UI elements
+            var multiplierEl = document.getElementById('canvas-game-multiplier');
+            var winningsEl = document.getElementById('canvas-game-winnings');
+            var jumpsEl = document.getElementById('canvas-game-jumps');
+            
+            if (multiplierEl) multiplierEl.textContent = fMultiplier.toFixed(2) + "x";
+            if (winningsEl) winningsEl.textContent = fWinnings.toFixed(2) + " MON";
+            if (jumpsEl) jumpsEl.textContent = iJumps;
             
             // Enable cashout button when game is active
             var cashoutBtn = document.getElementById('cashout-btn');
@@ -748,6 +1211,303 @@ function CInterface(iBestScore) {
                 }
             }
         }
+    };
+
+    // ===== CreateJS Canvas-native UI implementation =====
+    this._showCanvasBetUI = function(iBetAmount) {
+        // Lazy create container
+        if (!_oCanvasBetUIContainer) {
+            _oCanvasBetUIContainer = new createjs.Container();
+            _oCanvasBetUIContainer.name = "CanvasBetUI";
+            s_oStage.addChild(_oCanvasBetUIContainer);
+
+            // Background bar
+            var barHeight = 60;
+            // Align the top of the bar to the bottom of the sea sprite (CRiverAnimation height is 130, positioned at y = PLATFORM_Y - 30)
+            // Sea bottom = _iRiverY + _iRiverHeight = (PLATFORM_Y - 30) + 130 = PLATFORM_Y + 100
+            // We align bar top to that value. Bar top Y = CANVAS_HEIGHT - barHeight + bottomOffset
+            var seaBottomY = PLATFORM_Y + 100;
+            // Clamp so the bar stays fully inside the canvas
+            var topY = Math.min(seaBottomY, CANVAS_HEIGHT - barHeight);
+            var bottomOffset = topY - (CANVAS_HEIGHT - barHeight);
+            var bg = new createjs.Shape();
+            bg.graphics.beginFill("rgba(0,0,0,0.9)").drawRoundRect(0, CANVAS_HEIGHT - barHeight + bottomOffset, CANVAS_WIDTH, barHeight, 10);
+            bg.graphics.setStrokeStyle(2).beginStroke("#FFD700").drawRoundRect(0, CANVAS_HEIGHT - barHeight + bottomOffset, CANVAS_WIDTH, barHeight, 10);
+            _oCanvasBetUIContainer.addChild(bg);
+            _betBg = bg;
+
+            // Fonts
+            var labelColor = "#FFD700"; // gold
+            var valueColor = "#00FF00"; // green
+
+            // Bet label and controls
+            _betLabelText = new createjs.Text("BET:", "bold 18px Orbitron", labelColor);
+            _betLabelText.x = 20; _betLabelText.y = CANVAS_HEIGHT - barHeight + bottomOffset + 20;
+            _oCanvasBetUIContainer.addChild(_betLabelText);
+
+            _betMinusBtn = this._createCjsButton(90, CANVAS_HEIGHT - barHeight + bottomOffset + 14, 32, 32, "-");
+            _betPlusBtn = this._createCjsButton(230, CANVAS_HEIGHT - barHeight + bottomOffset + 14, 32, 32, "+");
+            _oCanvasBetUIContainer.addChild(_betMinusBtn.container, _betPlusBtn.container);
+
+            _betValueText = new createjs.Text((iBetAmount || 1).toFixed(1) + " MON", "bold 18px Orbitron", valueColor);
+            _betValueText.textAlign = "center";
+            _betValueText.x = 170; _betValueText.y = CANVAS_HEIGHT - barHeight + bottomOffset + 20;
+            _oCanvasBetUIContainer.addChild(_betValueText);
+
+            // Mode label and buttons
+            _modeLabelText = new createjs.Text("MODE:", "bold 18px Orbitron", labelColor);
+            _modeLabelText.x = 320; _modeLabelText.y = CANVAS_HEIGHT - barHeight + bottomOffset + 20;
+            _oCanvasBetUIContainer.addChild(_modeLabelText);
+
+            _easyBtn = this._createCjsPill(400, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 70, 36, "EASY", true);
+            _hardBtn = this._createCjsPill(480, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 70, 36, "HARD", false);
+            _oCanvasBetUIContainer.addChild(_easyBtn.container, _hardBtn.container);
+
+            // Play mode label and buttons
+            _playModeLabelText = new createjs.Text("PLAY:", "bold 18px Orbitron", labelColor);
+            _playModeLabelText.x = 580; _playModeLabelText.y = CANVAS_HEIGHT - barHeight + bottomOffset + 20;
+            _oCanvasBetUIContainer.addChild(_playModeLabelText);
+
+            _manualBtn = this._createCjsPill(650, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 80, 36, "MANUAL", true);
+            _autoBtn = this._createCjsPill(740, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 80, 36, "AUTO", false);
+            _manualBtn.container.name = "MANUAL";
+            _autoBtn.container.name = "AUTO";
+            _oCanvasBetUIContainer.addChild(_manualBtn.container, _autoBtn.container);
+
+            // Action buttons (right side)
+            _startBtn  = this._createCjsPrimary(CANVAS_WIDTH - 230, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 120, 36, "START");
+            _homeBtn   = this._createCjsButton(CANVAS_WIDTH - 100, CANVAS_HEIGHT - barHeight + bottomOffset + 12, 90, 36, "HOME");
+            _oCanvasBetUIContainer.addChild(_startBtn.container, _homeBtn.container);
+
+            // Handlers
+            var self = this;
+            _betMinusBtn.onClick(function(){ if (s_oGame && s_oGame.decreaseBet){ s_oGame.decreaseBet(); self._syncBetFromGame(); } });
+            _betPlusBtn.onClick(function(){ if (s_oGame && s_oGame.increaseBet){ s_oGame.increaseBet(); self._syncBetFromGame(); } });
+            _easyBtn.onClick(function(){ 
+                _sCurrentDifficulty = 'easy'; 
+                if (s_oGame && s_oGame.setDifficulty) s_oGame.setDifficulty('easy'); 
+                self._setModeActive('easy'); 
+                self.updateRiskDisplay(); 
+                if (window.sidePanels) window.sidePanels.setDifficulty('easy');
+                // Dispatch difficulty change event for AutoModeManager
+                window.dispatchEvent(new CustomEvent("difficultyChanged", {
+                    detail: { difficulty: 'easy' }
+                }));
+            });
+            _hardBtn.onClick(function(){ 
+                _sCurrentDifficulty = 'hard'; 
+                if (s_oGame && s_oGame.setDifficulty) s_oGame.setDifficulty('hard'); 
+                self._setModeActive('hard'); 
+                self.updateRiskDisplay(); 
+                if (window.sidePanels) window.sidePanels.setDifficulty('hard');
+                // Dispatch difficulty change event for AutoModeManager
+                window.dispatchEvent(new CustomEvent("difficultyChanged", {
+                    detail: { difficulty: 'hard' }
+                }));
+            });
+            
+            // Auto/Manual mode handlers
+            _manualBtn.onClick(function(){ 
+                _bAutoMode = false; 
+                self._setPlayModeActive('manual'); 
+                if (window.autoModeManager) window.autoModeManager.setAutoMode(false);
+                console.log("🤖 Manual mode selected");
+            });
+            _autoBtn.onClick(function(){ 
+                _bAutoMode = true; 
+                self._setPlayModeActive('auto'); 
+                if (window.autoModeManager) window.autoModeManager.setAutoMode(true);
+                console.log("🤖 Auto mode selected");
+            });
+            
+            _startBtn.onClick(function(){ if (s_oGame && s_oGame.startGameplay) s_oGame.startGameplay(); });
+            _homeBtn.onClick(function(){ if (s_oMain && s_oMain.gotoMenu) s_oMain.gotoMenu(); });
+        }
+
+        // Update bet value
+        if (_betValueText) {
+            _betValueText.text = (iBetAmount || 1).toFixed(1) + " MON";
+        }
+
+        // Toggle visibility
+        if (_oCanvasBetUIContainer) {
+            _oCanvasBetUIContainer.visible = true;
+        }
+        if (_oCanvasGameUIContainer) {
+            _oCanvasGameUIContainer.visible = false;
+        }
+        s_oStage.update();
+    };
+
+    this._hideCanvasBetUI = function() {
+        if (_oCanvasBetUIContainer) {
+            _oCanvasBetUIContainer.visible = false;
+            s_oStage.update();
+        }
+    };
+
+    this._showCanvasGameUI = function(iBetAmount, sDifficulty, fMultiplier) {
+        if (_oCanvasGameUIContainer == null) {
+            _oCanvasGameUIContainer = new createjs.Container();
+            _oCanvasGameUIContainer.name = "CanvasGameUI";
+            s_oStage.addChild(_oCanvasGameUIContainer);
+
+            var barHeight = 60;
+            var seaBottomY = PLATFORM_Y + 100;
+            var topY = Math.min(seaBottomY, CANVAS_HEIGHT - barHeight);
+            var bottomOffset = topY - (CANVAS_HEIGHT - barHeight);
+            var gbg = new createjs.Shape();
+            gbg.graphics.beginFill("rgba(0,0,0,0.9)").drawRoundRect(0, CANVAS_HEIGHT - barHeight + bottomOffset, CANVAS_WIDTH, barHeight, 10);
+            gbg.graphics.setStrokeStyle(2).beginStroke("#FFD700").drawRoundRect(0, CANVAS_HEIGHT - barHeight + bottomOffset, CANVAS_WIDTH, barHeight, 10);
+            _oCanvasGameUIContainer.addChild(gbg);
+            _gameBg = gbg;
+
+            var labelColor = "#FFD700";
+            var valueColor = "#00FF00";
+
+            var baseY = CANVAS_HEIGHT - barHeight + bottomOffset + 10;
+            var x = 20;
+            var colW = 150;
+            // Bet (stacked)
+            _gBetLabel = new createjs.Text("Bet:", "bold 16px Orbitron", labelColor); _gBetLabel.x = x; _gBetLabel.y = baseY; _oCanvasGameUIContainer.addChild(_gBetLabel);
+            _gBetValue = new createjs.Text("", "bold 18px Orbitron", valueColor); _gBetValue.x = x; _gBetValue.y = baseY + 20; _oCanvasGameUIContainer.addChild(_gBetValue);
+            x += colW;
+            // Mode (stacked)
+            _gModeLabel = new createjs.Text("Mode:", "bold 16px Orbitron", labelColor); _gModeLabel.x = x; _gModeLabel.y = baseY; _oCanvasGameUIContainer.addChild(_gModeLabel);
+            _gModeValue = new createjs.Text("", "bold 18px Orbitron", valueColor); _gModeValue.x = x; _gModeValue.y = baseY + 20; _oCanvasGameUIContainer.addChild(_gModeValue);
+            x += colW;
+            // Multiplier (stacked)
+            _gMultLabel = new createjs.Text("Multiplier:", "bold 16px Orbitron", labelColor); _gMultLabel.x = x; _gMultLabel.y = baseY; _oCanvasGameUIContainer.addChild(_gMultLabel);
+            _gMultValue = new createjs.Text("", "bold 18px Orbitron", valueColor); _gMultValue.x = x; _gMultValue.y = baseY + 20; _oCanvasGameUIContainer.addChild(_gMultValue);
+            x += colW;
+            // Winnings (stacked)
+            _gWinLabel  = new createjs.Text("Winnings:", "bold 16px Orbitron", labelColor); _gWinLabel.x = x; _gWinLabel.y = baseY; _oCanvasGameUIContainer.addChild(_gWinLabel);
+            _gWinValue  = new createjs.Text("", "bold 18px Orbitron", valueColor); _gWinValue.x = x; _gWinValue.y = baseY + 20; _oCanvasGameUIContainer.addChild(_gWinValue);
+            x += colW;
+            // Jumps (stacked)
+            _gJumpsLabel= new createjs.Text("Jumps:", "bold 16px Orbitron", labelColor); _gJumpsLabel.x = x; _gJumpsLabel.y = baseY; _oCanvasGameUIContainer.addChild(_gJumpsLabel);
+            _gJumpsValue= new createjs.Text("0", "bold 18px Orbitron", valueColor); _gJumpsValue.x = x; _gJumpsValue.y = baseY + 20; _oCanvasGameUIContainer.addChild(_gJumpsValue);
+
+            // Buttons (right)
+            _cashoutBtn    = this._createCjsPrimary(CANVAS_WIDTH - 230, baseY, 120, 36, "CASHOUT");
+            _homeGameBtn   = this._createCjsButton(CANVAS_WIDTH - 100, baseY, 90, 36, "HOME");
+            _oCanvasGameUIContainer.addChild(_cashoutBtn.container, _homeGameBtn.container);
+
+            var self = this;
+            _cashoutBtn.onClick(function(){ if (s_oGame && s_oGame.cashout) s_oGame.cashout(); });
+            _homeGameBtn.onClick(function(){ if (s_oMain && s_oMain.gotoMenu) s_oMain.gotoMenu(); });
+        }
+
+        if (_gBetValue) _gBetValue.text = (iBetAmount || 1).toFixed(1) + " MON";
+        if (_gModeValue) _gModeValue.text = (sDifficulty || 'easy').toUpperCase();
+        if (_gMultValue) _gMultValue.text = (fMultiplier || 1).toFixed(2) + "x";
+        if (_gWinValue) _gWinValue.text = ((iBetAmount || 1) * (fMultiplier || 1)).toFixed(2) + " MON";
+
+        if (_oCanvasBetUIContainer) _oCanvasBetUIContainer.visible = false;
+        if (_oCanvasGameUIContainer) _oCanvasGameUIContainer.visible = true;
+        s_oStage.update();
+    };
+
+    this._hideCanvasGameUI = function() {
+        if (_oCanvasGameUIContainer) {
+            _oCanvasGameUIContainer.visible = false;
+            s_oStage.update();
+        }
+    };
+
+    this._setModeActive = function(mode) {
+        if (_easyBtn && _hardBtn) {
+            _easyBtn.setActive(mode === 'easy');
+            _hardBtn.setActive(mode === 'hard');
+            s_oStage.update();
+        }
+    };
+    
+    this._setPlayModeActive = function(mode) {
+        console.log("🎯 Setting play mode:", mode, "Manual button:", !!_manualBtn, "Auto button:", !!_autoBtn);
+        
+        if (_manualBtn && _autoBtn) {
+            _manualBtn.setActive(mode === 'manual');
+            _autoBtn.setActive(mode === 'auto');
+            s_oStage.update();
+            console.log("✅ Play mode buttons updated");
+        } else {
+            console.warn("⚠️ Play mode buttons not found");
+        }
+    };
+
+    this._syncBetFromGame = function() {
+        if (s_oGame && s_oGame.getBetAmount && _betValueText) {
+            _betValueText.text = s_oGame.getBetAmount().toFixed(1) + " MON";
+            s_oStage.update();
+        }
+    };
+
+    // Helpers to build CreateJS buttons
+    this._createCjsButton = function(x, y, w, h, text) {
+        var cont = new createjs.Container();
+        var bg = new createjs.Shape();
+        bg.graphics.beginFill("rgba(255,255,255,0.08)").setStrokeStyle(1).beginStroke("#FFD700").drawRoundRect(0, 0, w, h, 6);
+        cont.addChild(bg);
+        var t = new createjs.Text(text, "bold 14px Orbitron", "#FFD700");
+        t.textAlign = "center"; t.textBaseline = "middle"; t.x = w/2; t.y = h/2;
+        cont.addChild(t);
+        cont.x = x; cont.y = y;
+        cont.cursor = "pointer";
+        var handler = null;
+        cont.on("mousedown", function(){ bg.alpha = 0.8; });
+        cont.on("pressup", function(){ bg.alpha = 1; if (handler) handler(); });
+        return {
+            container: cont,
+            onClick: function(cb){ handler = cb; }
+        };
+    };
+
+    this._createCjsPrimary = function(x, y, w, h, text) {
+        var cont = new createjs.Container();
+        var bg = new createjs.Shape();
+        bg.graphics.beginLinearGradientFill(["#66ff66", "#00ff00"],[0,1],0,0,w,h).setStrokeStyle(1).beginStroke("#00CC00").drawRoundRect(0, 0, w, h, 6);
+        cont.addChild(bg);
+        var t = new createjs.Text(text, "bold 14px Orbitron", "#003300");
+        t.textAlign = "center"; t.textBaseline = "middle"; t.x = w/2; t.y = h/2;
+        cont.addChild(t);
+        cont.x = x; cont.y = y;
+        cont.cursor = "pointer";
+        var handler = null;
+        cont.on("mousedown", function(){ bg.alpha = 0.9; });
+        cont.on("pressup", function(){ bg.alpha = 1; if (handler) handler(); });
+        return {
+            container: cont,
+            onClick: function(cb){ handler = cb; }
+        };
+    };
+
+    this._createCjsPill = function(x, y, w, h, text, active) {
+        var cont = new createjs.Container();
+        var bg = new createjs.Shape();
+        function redraw() {
+            bg.graphics.clear();
+            if (active) {
+                bg.graphics.beginLinearGradientFill(["#66ff66", "#00ff00"],[0,1],0,0,w,h).setStrokeStyle(1).beginStroke("#00CC00").drawRoundRect(0, 0, w, h, h/2);
+            } else {
+                bg.graphics.beginFill("rgba(255,255,255,0.08)").setStrokeStyle(1).beginStroke("#FFD700").drawRoundRect(0, 0, w, h, h/2);
+            }
+        }
+        redraw();
+        cont.addChild(bg);
+        var t = new createjs.Text(text, "bold 12px Orbitron", active ? "#003300" : "#FFD700");
+        t.textAlign = "center"; t.textBaseline = "middle"; t.x = w/2; t.y = h/2;
+        cont.addChild(t);
+        cont.x = x; cont.y = y;
+        cont.cursor = "pointer";
+        var handler = null;
+        cont.on("mousedown", function(){ bg.alpha = 0.9; });
+        cont.on("pressup", function(){ bg.alpha = 1; if (handler) handler(); });
+        return {
+            container: cont,
+            onClick: function(cb){ handler = function(){ active = true; redraw(); t.color = "#003300"; cb(); }; },
+            setActive: function(a){ active = a; redraw(); t.color = a?"#003300":"#FFD700"; }
+        };
     };
     
     // Enable cashout button when game starts (but only after first jump)
@@ -789,7 +1549,7 @@ function CInterface(iBestScore) {
     
     // Hide game UI
     // Hide game UI
-    this.hideGameUI = function() {
+    this._hideGameUILegacy = function() {
         if (!_bGameUIVisible) return;
         
         _bGameUIVisible = false;
@@ -887,6 +1647,7 @@ function CInterface(iBestScore) {
     };
     
     this.unload = function () {
+        this._removeAutoModeListeners();
         
         if (DISABLE_SOUND_MOBILE === false || s_bMobile === false) {
             if (_oAudioToggle && typeof _oAudioToggle.unload === 'function') {
@@ -903,6 +1664,129 @@ function CInterface(iBestScore) {
 
         // Exit butonu kaldırıldı
         s_oInterface = null;
+    };
+    
+    // Auto mode event listeners
+    this._addAutoModeListeners = function() {
+        // Remove existing listeners first to prevent duplicates
+        this._removeAutoModeListeners();
+        
+        // Manual mode button
+        var manualModeBtn = document.getElementById('manual-mode');
+        if (manualModeBtn) {
+            var manualHandler = function() {
+                this.setAutoMode(false);
+            }.bind(this);
+            manualModeBtn.addEventListener('click', manualHandler);
+            _autoModeListeners.push({element: manualModeBtn, event: 'click', handler: manualHandler});
+            console.log("🤖 Manual mode button listener added");
+        }
+        
+        // Auto mode button
+        var autoModeBtn = document.getElementById('auto-mode');
+        if (autoModeBtn) {
+            var autoHandler = function() {
+                this.setAutoMode(true);
+            }.bind(this);
+            autoModeBtn.addEventListener('click', autoHandler);
+            _autoModeListeners.push({element: autoModeBtn, event: 'click', handler: autoHandler});
+            console.log("🤖 Auto mode button listener added");
+        }
+        
+        // Platform minus button
+        var platformMinusBtn = document.getElementById('platform-minus');
+        if (platformMinusBtn) {
+            var minusHandler = function() {
+                if (window.autoModeManager) {
+                    window.autoModeManager.decreaseTargetPlatform();
+                }
+            };
+            platformMinusBtn.addEventListener('click', minusHandler);
+            _autoModeListeners.push({element: platformMinusBtn, event: 'click', handler: minusHandler});
+        }
+        
+        // Platform plus button
+        var platformPlusBtn = document.getElementById('platform-plus');
+        if (platformPlusBtn) {
+            var plusHandler = function() {
+                if (window.autoModeManager) {
+                    window.autoModeManager.increaseTargetPlatform();
+                }
+            };
+            platformPlusBtn.addEventListener('click', plusHandler);
+            _autoModeListeners.push({element: platformPlusBtn, event: 'click', handler: plusHandler});
+        }
+        
+        // Confirm auto settings button
+        var confirmBtn = document.getElementById('confirm-auto-settings');
+        if (confirmBtn) {
+            var confirmHandler = function() {
+                if (window.autoModeManager) {
+                    window.autoModeManager.confirmAutoSettings();
+                }
+            };
+            confirmBtn.addEventListener('click', confirmHandler);
+            _autoModeListeners.push({element: confirmBtn, event: 'click', handler: confirmHandler});
+        }
+        
+        // Cancel auto settings button
+        var cancelBtn = document.getElementById('cancel-auto-settings');
+        if (cancelBtn) {
+            var cancelHandler = function() {
+                if (window.autoModeManager) {
+                    window.autoModeManager.cancelAutoSettings();
+                }
+            };
+            cancelBtn.addEventListener('click', cancelHandler);
+            _autoModeListeners.push({element: cancelBtn, event: 'click', handler: cancelHandler});
+        }
+        
+        // Close auto settings button
+        var closeBtn = document.getElementById('close-auto-settings');
+        if (closeBtn) {
+            var closeHandler = function() {
+                if (window.autoModeManager) {
+                    window.autoModeManager.cancelAutoSettings();
+                }
+            };
+            closeBtn.addEventListener('click', closeHandler);
+            _autoModeListeners.push({element: closeBtn, event: 'click', handler: closeHandler});
+        }
+        
+        console.log("🤖 Auto mode listeners added");
+    };
+    
+    this._removeAutoModeListeners = function() {
+        _autoModeListeners.forEach(function(listener) {
+            listener.element.removeEventListener(listener.event, listener.handler);
+        });
+        _autoModeListeners = [];
+        console.log("🤖 Auto mode listeners removed");
+    };
+    
+    this.setAutoMode = function(bEnabled) {
+        _bAutoMode = bEnabled;
+        
+        // Update UI
+        var manualBtn = document.getElementById('manual-mode');
+        var autoBtn = document.getElementById('auto-mode');
+        
+        if (manualBtn && autoBtn) {
+            if (_bAutoMode) {
+                manualBtn.classList.remove('active');
+                autoBtn.classList.add('active');
+            } else {
+                manualBtn.classList.add('active');
+                autoBtn.classList.remove('active');
+            }
+        }
+        
+        // Update auto mode manager
+        if (window.autoModeManager) {
+            window.autoModeManager.setAutoMode(_bAutoMode);
+        }
+        
+        console.log("🤖 Auto mode:", _bAutoMode ? "ENABLED" : "DISABLED");
     };
     
     
@@ -923,8 +1807,8 @@ function CInterface(iBestScore) {
             console.log("Pausing game...");
             _bGamePaused = true;
             s_oGame.pauseGame();
-            // Show betting UI for new bet
-            this.showBettingUI(s_oGame.getCurrentBetAmount(), s_oGame.getCurrentDifficulty());
+            // Show canvas betting UI for new bet
+            this.showCanvasBettingUI(s_oGame.getCurrentBetAmount(), s_oGame.getCurrentDifficulty());
         }
     };
     
@@ -1001,60 +1885,6 @@ function CInterface(iBestScore) {
 	    s_oMain.gotoMenu();
 	};
 	
-    // Wallet Toggle Functions
-    this._removeWalletToggleListeners = function() {
-        if (_walletToggleHandler) {
-            var walletToggleBtn = document.getElementById('wallet-toggle');
-            if (walletToggleBtn) {
-                walletToggleBtn.removeEventListener('click', _walletToggleHandler);
-                console.log("🧹 Betting wallet toggle listener removed");
-            }
-            
-            var walletToggleGameBtn = document.getElementById('wallet-toggle-game');
-            if (walletToggleGameBtn) {
-                walletToggleGameBtn.removeEventListener('click', _walletToggleHandler);
-                console.log("🧹 Game wallet toggle listener removed");
-            }
-        }
-    };
-    
-    this._addWalletToggleListener = function() {
-        // Önce mevcut listener'ları temizle
-        this._removeWalletToggleListeners();
-        
-        // Handler'ı oluştur
-        _walletToggleHandler = this._onWalletToggle.bind(this);
-        
-        var walletToggleBtn = document.getElementById('wallet-toggle');
-        if (walletToggleBtn) {
-            walletToggleBtn.addEventListener('click', _walletToggleHandler);
-            console.log("✅ Wallet toggle listener added");
-        } else {
-            console.error("❌ Wallet toggle button not found");
-        }
-        
-        // Game UI wallet toggle listener
-        var walletToggleGameBtn = document.getElementById('wallet-toggle-game');
-        if (walletToggleGameBtn) {
-            walletToggleGameBtn.addEventListener('click', _walletToggleHandler);
-            console.log("✅ Game wallet toggle listener added");
-        } else {
-            console.error("❌ Game wallet toggle button not found");
-        }
-    };
-	
-	this._onWalletToggle = function(e) {
-	    e.preventDefault();
-	    e.stopPropagation();
-	    
-	    console.log("🔄 Wallet toggle clicked, current state:", _bWalletVisible);
-	    
-	    _bWalletVisible = !_bWalletVisible;
-	    this._updateWalletVisibility();
-	    this._updateWalletToggleButton();
-	    
-	    console.log("✅ Wallet visibility toggled to:", _bWalletVisible);
-	};
 	
 	this._updateWalletVisibility = function() {
 	    var walletContainer = document.querySelector('.privy-wallet-container');
@@ -1067,85 +1897,57 @@ function CInterface(iBestScore) {
             walletContainer.classList.remove('wallet-hidden');
             walletContainer.classList.add('wallet-visible');
             
-            // Force inline styles using top position and reset any transforms
-            walletContainer.style.top = '0px';
-            walletContainer.style.left = '0px';
+            // For left panel wallet, use relative positioning
+            walletContainer.style.position = 'relative';
+            walletContainer.style.top = 'auto';
+            walletContainer.style.left = 'auto';
             walletContainer.style.opacity = '1';
             walletContainer.style.visibility = 'visible';
             walletContainer.style.pointerEvents = 'auto';
             walletContainer.style.transform = 'none';
-            walletContainer.style.position = 'fixed';
+            walletContainer.style.display = 'flex';
             
-            console.log("👁️ Wallet panel shown - Classes:", walletContainer.className);
+            console.log("👁️ Wallet panel shown in left panel - Classes:", walletContainer.className);
         } else {
             walletContainer.classList.remove('wallet-visible');
             walletContainer.classList.add('wallet-hidden');
             
-            // Force inline styles using top position and reset any transforms
-            walletContainer.style.top = '-100px';
-            walletContainer.style.left = '0px';
+            // For left panel wallet, use display none
+            walletContainer.style.position = 'relative';
+            walletContainer.style.top = 'auto';
+            walletContainer.style.left = 'auto';
             walletContainer.style.opacity = '0';
             walletContainer.style.visibility = 'hidden';
             walletContainer.style.pointerEvents = 'none';
             walletContainer.style.transform = 'none';
-            walletContainer.style.position = 'fixed';
+            walletContainer.style.display = 'none';
             
-            console.log("🙈 Wallet panel hidden - Classes:", walletContainer.className);
+            console.log("🙈 Wallet panel hidden in left panel - Classes:", walletContainer.className);
         }
 	    } else {
 	        console.error("❌ Wallet container not found");
 	    }
 	};
 	
-    this._updateWalletToggleButton = function() {
-        // Update betting UI wallet toggle button
-        var walletToggleBtn = document.getElementById('wallet-toggle');
-        if (walletToggleBtn) {
-            if (_bWalletVisible) {
-                walletToggleBtn.textContent = 'HIDE WALLET';
-                walletToggleBtn.classList.remove('wallet-hidden');
-            } else {
-                walletToggleBtn.textContent = 'SHOW WALLET';
-                walletToggleBtn.classList.add('wallet-hidden');
-            }
-            console.log("🔄 Betting wallet toggle button updated:", walletToggleBtn.textContent);
-        }
-        
-        // Update game UI wallet toggle button
-        var walletToggleGameBtn = document.getElementById('wallet-toggle-game');
-        if (walletToggleGameBtn) {
-            if (_bWalletVisible) {
-                walletToggleGameBtn.textContent = 'HIDE WALLET';
-                walletToggleGameBtn.classList.remove('wallet-hidden');
-            } else {
-                walletToggleGameBtn.textContent = 'SHOW WALLET';
-                walletToggleGameBtn.classList.add('wallet-hidden');
-            }
-            console.log("🔄 Game wallet toggle button updated:", walletToggleGameBtn.textContent);
-        }
-    };
 	
 	// Public method to show wallet (called when game starts)
 	this.showWallet = function() {
 	    _bWalletVisible = true;
 	    this._updateWalletVisibility();
-	    this._updateWalletToggleButton();
 	};
 	
 	// Public method to hide wallet (called when game starts)
 	this.hideWallet = function() {
 	    _bWalletVisible = false;
 	    this._updateWalletVisibility();
-	    this._updateWalletToggleButton();
 	};
 	
-	// Public method to hide wallet for gameplay (toggle button remains active)
+	// Public method to hide wallet for gameplay
 	this.hideWalletForGameplay = function() {
 	    _bWalletVisible = false;
 	    this._updateWalletVisibility();
-	    this._updateWalletToggleButton();
-	console.log("🎮 Wallet hidden for gameplay, toggle buttons remain active");
-};
+	    console.log("🎮 Wallet hidden for gameplay");
+	};
 
 // NEW: Check for active round and show recovery button
 this._checkForActiveRound = async function() {
@@ -1282,12 +2084,18 @@ this._showRecoveryNotification = function(title, message, type) {
     this._onCashoutCompleted = function(event) {
         console.log("🎉 Cashout completed event received, ensuring UI is visible");
         
-        // Force show betting UI and wallet after a short delay
+        // Hide game UI first
+        if (this.hideGameUI) {
+            this.hideGameUI();
+            console.log("✅ Game UI hidden after cashout");
+        }
+        
+        // Force show canvas betting UI and wallet after a short delay
         setTimeout(() => {
-            // Show betting UI with default values
-            if (this.showBettingUI) {
-                this.showBettingUI(1, 1); // Default bet amount and level
-                console.log("✅ Betting UI shown after cashout event");
+            // Show canvas betting UI with default values
+            if (this.showCanvasBettingUI) {
+                this.showCanvasBettingUI(1, 1); // Default bet amount and level
+                console.log("✅ Canvas Betting UI shown after cashout event");
             }
             
             // Show wallet

@@ -32,7 +32,7 @@ class GameConfig {
             // Canvas settings
             canvas: {
                 width: 1200,
-                height: 600,
+                height: 800,
                 uiHeight: 80
             },
             
@@ -57,7 +57,7 @@ class GameConfig {
                 count: 7,
                 spacing: 250,
                 startX: 400,
-                y: 520, // CANVAS_HEIGHT - 80
+                y: 620, // Fix platform Y to previous visual position so sea stays where it was
                 scale: 1.2,
                 celebrationPlatform: {
                     offsetY: 210,

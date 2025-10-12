@@ -69,7 +69,7 @@ class SidePanels {
     }
     
     /**
-     * Initialize left panel content
+     * Initialize left panel content - Now contains wallet UI
      */
     initializeLeftPanel() {
         if (!this.leftPanel) {
@@ -77,66 +77,12 @@ class SidePanels {
             return;
         }
         
-        console.log("📊 Left panel found, initializing content...");
+        console.log("📊 Left panel found, wallet UI will be rendered here...");
         
-        // Clear existing content
-        this.leftPanel.innerHTML = '';
+        // Left panel now contains wallet UI, no need to initialize content here
+        // The wallet will be moved here by GameFrameManager
         
-        // Create panel header
-        const header = document.createElement('div');
-        header.className = 'panel-header';
-        header.innerHTML = `
-            <h3>LIVE STATS</h3>
-            <div class="difficulty-indicator">${this.currentDifficulty.toUpperCase()}</div>
-        `;
-        this.leftPanel.appendChild(header);
-        
-        // Create panel content
-        const content = document.createElement('div');
-        content.className = 'panel-content';
-        
-        // Create live stats section
-        const liveStatsSection = document.createElement('div');
-        liveStatsSection.className = 'panel-section';
-        liveStatsSection.innerHTML = `
-            <div class="live-stats">
-                <div class="stat-item">
-                    <span class="stat-label">Current Multiplier</span>
-                    <span class="stat-value" id="live-multiplier">1.00x</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Platforms</span>
-                    <span class="stat-value" id="live-platforms">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Potential Winnings</span>
-                    <span class="stat-value" id="live-potential">0 MON</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Bet Amount</span>
-                    <span class="stat-value" id="live-bet">0 MON</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Risk</span>
-                    <span class="stat-value" id="live-risk">25% per platform</span>
-                </div>
-            </div>
-        `;
-        
-        content.appendChild(liveStatsSection);
-        
-        // Risk info moved to live stats section
-        
-        this.leftPanel.appendChild(content);
-        
-        // Store references to live stats elements
-        this.liveMultiplier = document.getElementById('live-multiplier');
-        this.livePlatforms = document.getElementById('live-platforms');
-        this.livePotential = document.getElementById('live-potential');
-        this.liveBet = document.getElementById('live-bet');
-        this.liveRisk = document.getElementById('live-risk');
-        
-        console.log("✅ Left panel initialized with live stats only");
+        console.log("✅ Left panel ready for wallet UI");
     }
     
 
@@ -149,35 +95,338 @@ class SidePanels {
             return;
         }
         
-        console.log("📋 Right panel found, initializing content...");
+        console.log("📋 Right panel found, initializing SVG menu...");
         
-        // Check if content exists
-        const strategyContent = this.rightPanel.querySelector('.strategy-content');
-        const tipsContent = this.rightPanel.querySelector('.tips-content');
+        // Initialize SVG menu system for right panel
+        this.initializeRightPanelMenu();
         
-        console.log("📋 Strategy content:", strategyContent ? "✓" : "✗");
-        console.log("📋 Tips content:", tipsContent ? "✓" : "✗");
+        console.log("📋 Right panel initialized with SVG menu");
+    }
+    
+    /**
+     * Initialize SVG menu system for right panel
+     */
+    initializeRightPanelMenu() {
+        const menuContainer = this.rightPanel.querySelector('#svg-menu-container-right');
+        const menuItems = this.rightPanel.querySelector('#menu-items-right');
         
-        // Update strategy content with dynamic values
-        const strategyItems = this.rightPanel.querySelectorAll('.strategy-item');
-        console.log("📋 Strategy items found:", strategyItems.length);
+        if (!menuContainer || !menuItems) {
+            console.log("❌ Right panel menu elements not found!");
+            return;
+        }
         
-        strategyItems.forEach((item, index) => {
-            const label = item.querySelector('.strategy-label');
-            const text = item.querySelector('.strategy-text');
-            
-            console.log(`📋 Strategy item ${index}:`, label ? label.textContent : "No label", text ? text.textContent : "No text");
-            
-            if (label && text) {
-                if (label.textContent.includes('Easy Mode')) {
-                    text.textContent = '25% risk per platform';
-                } else if (label.textContent.includes('Hard Mode')) {
-                    text.textContent = '40% risk per platform';
+        // Menu item click handlers
+        const menuItemElements = menuItems.querySelectorAll('.menu-item');
+        menuItemElements.forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const itemId = item.id;
+                console.log("🎮 Right panel menu item clicked:", itemId);
+                
+                switch(itemId) {
+                    case 'menu-leaderboard-right':
+                        this.openLeaderboard();
+                        break;
+                    case 'menu-options-right':
+                        this.openOptions();
+                        break;
+                    case 'menu-sound-right':
+                        this.toggleSound();
+                        break;
+                    case 'menu-fullscreen-right':
+                        this.toggleFullscreen();
+                        break;
+                    case 'menu-credits-right':
+                        this.openCredits();
+                        break;
                 }
-            }
+            });
         });
+    }
+    
+    /**
+     * Open leaderboard
+     */
+    openLeaderboard() {
+        console.log("🏆 Opening leaderboard...");
+        if (window.CLeaderboardNew) {
+            const leaderboard = new CLeaderboardNew();
+            leaderboard.show();
+        }
+    }
+    
+    /**
+     * Open options
+     */
+    openOptions() {
+        console.log("⚙️ Opening options...");
+        const optionsPanel = document.getElementById('options-panel');
+        if (optionsPanel) {
+            optionsPanel.style.display = 'flex';
+            this._initOptionsPanel();
+        } else {
+            console.error("❌ Options panel not found!");
+        }
+    }
+    
+    /**
+     * Initialize options panel
+     */
+    _initOptionsPanel() {
+        const self = this;
         
-        console.log("📋 Right panel initialized with strategy and tips");
+        // Get elements
+        const closeBtn = document.getElementById('close-options');
+        const applyBtn = document.getElementById('apply-options');
+        const resetBtn = document.getElementById('reset-options');
+        const musicVolumeSlider = document.getElementById('music-volume');
+        const soundVolumeSlider = document.getElementById('sound-volume');
+        const musicVolumeValue = document.getElementById('music-volume-value');
+        const soundVolumeValue = document.getElementById('sound-volume-value');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const saturationSlider = document.getElementById('saturation');
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const saturationValue = document.getElementById('saturation-value');
+        const fullscreenSelect = document.getElementById('fullscreen-mode');
+        
+        // Load saved settings
+        this._loadOptionsSettings();
+        
+        // Close button
+        if (closeBtn) {
+            closeBtn.onclick = function() {
+                self._hideOptionsPanel();
+            };
+        }
+        
+        // Apply button
+        if (applyBtn) {
+            applyBtn.onclick = function() {
+                self._applyOptionsSettings();
+            };
+        }
+        
+        // Reset button
+        if (resetBtn) {
+            resetBtn.onclick = function() {
+                self._resetOptionsSettings();
+            };
+        }
+        
+        // Volume sliders
+        if (musicVolumeSlider && musicVolumeValue) {
+            musicVolumeSlider.oninput = function() {
+                musicVolumeValue.textContent = this.value + '%';
+            };
+        }
+        
+        if (soundVolumeSlider && soundVolumeValue) {
+            soundVolumeSlider.oninput = function() {
+                soundVolumeValue.textContent = this.value + '%';
+            };
+        }
+        
+        // Display sliders
+        if (brightnessSlider && brightnessValue) {
+            brightnessSlider.oninput = function() {
+                brightnessValue.textContent = this.value + '%';
+            };
+        }
+        
+        if (contrastSlider && contrastValue) {
+            contrastSlider.oninput = function() {
+                contrastValue.textContent = this.value + '%';
+            };
+        }
+        
+        if (saturationSlider && saturationValue) {
+            saturationSlider.oninput = function() {
+                saturationValue.textContent = this.value + '%';
+            };
+        }
+        
+        // Click outside to close
+        const optionsPanel = document.getElementById('options-panel');
+        if (optionsPanel) {
+            optionsPanel.onclick = function(e) {
+                if (e.target === optionsPanel) {
+                    self._hideOptionsPanel();
+                }
+            };
+        }
+    }
+    
+    /**
+     * Hide options panel
+     */
+    _hideOptionsPanel() {
+        const optionsPanel = document.getElementById('options-panel');
+        if (optionsPanel) {
+            optionsPanel.style.display = 'none';
+        }
+    }
+    
+    /**
+     * Load options settings
+     */
+    _loadOptionsSettings() {
+        // Load saved settings from localStorage
+        const musicVolume = localStorage.getItem('musicVolume') || '20';
+        const soundVolume = localStorage.getItem('soundVolume') || '100';
+        const brightness = localStorage.getItem('brightness') || '100';
+        const contrast = localStorage.getItem('contrast') || '100';
+        const saturation = localStorage.getItem('saturation') || '100';
+        const fullscreenMode = localStorage.getItem('fullscreenMode') || 'windowed';
+        
+        // Apply to UI
+        const musicVolumeSlider = document.getElementById('music-volume');
+        const soundVolumeSlider = document.getElementById('sound-volume');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const saturationSlider = document.getElementById('saturation');
+        const fullscreenSelect = document.getElementById('fullscreen-mode');
+        
+        if (musicVolumeSlider) musicVolumeSlider.value = musicVolume;
+        if (soundVolumeSlider) soundVolumeSlider.value = soundVolume;
+        if (brightnessSlider) brightnessSlider.value = brightness;
+        if (contrastSlider) contrastSlider.value = contrast;
+        if (saturationSlider) saturationSlider.value = saturation;
+        if (fullscreenSelect) fullscreenSelect.value = fullscreenMode;
+        
+        // Update display values
+        const musicVolumeValue = document.getElementById('music-volume-value');
+        const soundVolumeValue = document.getElementById('sound-volume-value');
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const saturationValue = document.getElementById('saturation-value');
+        
+        if (musicVolumeValue) musicVolumeValue.textContent = musicVolume + '%';
+        if (soundVolumeValue) soundVolumeValue.textContent = soundVolume + '%';
+        if (brightnessValue) brightnessValue.textContent = brightness + '%';
+        if (contrastValue) contrastValue.textContent = contrast + '%';
+        if (saturationValue) saturationValue.textContent = saturation + '%';
+    }
+    
+    /**
+     * Apply options settings
+     */
+    _applyOptionsSettings() {
+        const musicVolumeSlider = document.getElementById('music-volume');
+        const soundVolumeSlider = document.getElementById('sound-volume');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const saturationSlider = document.getElementById('saturation');
+        const fullscreenSelect = document.getElementById('fullscreen-mode');
+        
+        // Save to localStorage
+        if (musicVolumeSlider) localStorage.setItem('musicVolume', musicVolumeSlider.value);
+        if (soundVolumeSlider) localStorage.setItem('soundVolume', soundVolumeSlider.value);
+        if (brightnessSlider) localStorage.setItem('brightness', brightnessSlider.value);
+        if (contrastSlider) localStorage.setItem('contrast', contrastSlider.value);
+        if (saturationSlider) localStorage.setItem('saturation', saturationSlider.value);
+        if (fullscreenSelect) localStorage.setItem('fullscreenMode', fullscreenSelect.value);
+        
+        // Apply to game
+        if (musicVolumeSlider && window.s_oSoundTrack) {
+            s_oSoundTrack.volume = musicVolumeSlider.value / 100 * 0.2;
+        }
+        
+        console.log("✅ Options applied successfully!");
+        this._hideOptionsPanel();
+    }
+    
+    /**
+     * Reset options settings
+     */
+    _resetOptionsSettings() {
+        // Reset to defaults
+        const musicVolumeSlider = document.getElementById('music-volume');
+        const soundVolumeSlider = document.getElementById('sound-volume');
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const saturationSlider = document.getElementById('saturation');
+        const fullscreenSelect = document.getElementById('fullscreen-mode');
+        
+        if (musicVolumeSlider) musicVolumeSlider.value = '20';
+        if (soundVolumeSlider) soundVolumeSlider.value = '100';
+        if (brightnessSlider) brightnessSlider.value = '100';
+        if (contrastSlider) contrastSlider.value = '100';
+        if (saturationSlider) saturationSlider.value = '100';
+        if (fullscreenSelect) fullscreenSelect.value = 'windowed';
+        
+        // Update display values
+        const musicVolumeValue = document.getElementById('music-volume-value');
+        const soundVolumeValue = document.getElementById('sound-volume-value');
+        const brightnessValue = document.getElementById('brightness-value');
+        const contrastValue = document.getElementById('contrast-value');
+        const saturationValue = document.getElementById('saturation-value');
+        
+        if (musicVolumeValue) musicVolumeValue.textContent = '20%';
+        if (soundVolumeValue) soundVolumeValue.textContent = '100%';
+        if (brightnessValue) brightnessValue.textContent = '100%';
+        if (contrastValue) contrastValue.textContent = '100%';
+        if (saturationValue) saturationValue.textContent = '100%';
+        
+        console.log("🔄 Options reset to defaults!");
+    }
+    
+    /**
+     * Toggle sound
+     */
+    toggleSound() {
+        console.log("🔊 Toggling sound...");
+        
+        // Toggle global sound state
+        if (typeof s_bAudioActive !== 'undefined') {
+            s_bAudioActive = !s_bAudioActive;
+            if (typeof Howler !== 'undefined') {
+                Howler.mute(!s_bAudioActive);
+            }
+        }
+        
+        // Toggle soundtrack
+        if (window.s_oSoundTrack) {
+            if (s_oSoundTrack.volume > 0) {
+                s_oSoundTrack.volume = 0;
+                console.log("🔇 Sound muted");
+            } else {
+                s_oSoundTrack.volume = 0.2;
+                console.log("🔊 Sound unmuted");
+            }
+        }
+        
+        // Play click sound if enabled
+        if (s_bAudioActive && typeof playSound === 'function') {
+            playSound("click", 1, false);
+        }
+    }
+    
+    /**
+     * Toggle fullscreen
+     */
+    toggleFullscreen() {
+        console.log("📺 Toggling fullscreen...");
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log("Fullscreen failed:", err);
+            });
+        } else {
+            document.exitFullscreen().catch(err => {
+                console.log("Exit fullscreen failed:", err);
+            });
+        }
+    }
+    
+    /**
+     * Open credits/how to
+     */
+    openCredits() {
+        console.log("📖 Opening credits...");
+        if (window.CHowToPanel) {
+            new CHowToPanel();
+        }
     }
     
     
@@ -200,20 +449,11 @@ class SidePanels {
     }
     
     /**
-     * Update live stats during gameplay
+     * Update live stats during gameplay - Now handled by wallet UI
      */
     updateLiveStats(multiplier, platforms, betAmount) {
-        if (!this.liveMultiplier || !this.livePlatforms || !this.livePotential) return;
-        
-        this.liveMultiplier.textContent = `${multiplier.toFixed(2)}x`;
-        this.livePlatforms.textContent = platforms.toString();
-        
-        const potentialWin = Math.min(betAmount * multiplier, 100); // Max 100 MON
-        this.livePotential.textContent = `${potentialWin.toFixed(2)} MON`;
-        
-        // Update current platform in multiplier table
-        this.currentPlatform = platforms;
-        this.updateCurrentPlatformHighlight();
+        // Live stats are now handled by the wallet UI in the left panel
+        console.log(`📊 Live stats updated: ${multiplier.toFixed(2)}x, ${platforms} platforms, ${betAmount} MON bet`);
     }
     
     /**
@@ -282,27 +522,12 @@ class SidePanels {
     }
     
     /**
-     * Reset live stats
+     * Reset live stats - Now handled by wallet UI
      */
     resetLiveStats() {
-        if (this.liveMultiplier) this.liveMultiplier.textContent = '1.0x';
-        if (this.livePlatforms) this.livePlatforms.textContent = '0';
-        if (this.livePotential) this.livePotential.textContent = '0.0 MON';
-        
-        // Keep bet amount as is - don't reset it
-        if (this.liveBet && this.currentBetAmount) {
-            this.liveBet.textContent = `${this.currentBetAmount} MON`;
-        }
-        
-        // Keep risk display as is - don't reset it
-        if (this.liveRisk) {
-            this.liveRisk.textContent = `${this.currentDifficulty === 'hard' ? '40%' : '25%'} per platform`;
-        }
-        
+        // Live stats are now handled by the wallet UI in the left panel
         this.currentPlatform = 0;
-        this.updateCurrentPlatformHighlight();
-        
-        console.log("🔄 SidePanels live stats reset");
+        console.log("🔄 SidePanels live stats reset - handled by wallet UI");
     }
     
     /**
