@@ -39,6 +39,7 @@
         <script type="text/javascript" src="js/TextRenderer.js"></script>
         <script type="text/javascript" src="js/SidePanels.js"></script>
         <script type="text/javascript" src="js/GameFrameManager.js"></script>
+        <script type="text/javascript" src="js/AutoModeManager.js"></script>
         <script type="text/javascript" src="js/GameConfig.js"></script>
         <script type="text/javascript" src="js/GameManager.js"></script>
         <script type="text/javascript" src="js/ModernUtils.js"></script>
@@ -144,6 +145,8 @@
 
     </head>
     <body ondragstart="return false;" ondrop="return false;" >
+        <!-- Privy Modal Overlay -->
+        
         <!-- VRF Loading Overlay -->
         <div id="vrf-loading-overlay" style="display: none;">
             <div class="vrf-loading-text">Loading...</div>
@@ -230,8 +233,8 @@
             <p class="check-font-1">test 1</p>
         </div> 
         
-        <!-- Privy Wallet Root -->
-        <div id="privy-wallet-root"></div>
+        <!-- Privy Wallet Root - Moved to left panel -->
+        <div id="privy-wallet-root" style="display: none;"></div>
         
         <!-- Game Canvas Area -->
         <div id="game-container">
@@ -239,54 +242,15 @@
             <!-- Main Game Frame Container -->
             <div id="game-frame-container" class="game-frame">
                 
-                <!-- Top Panel - Wallet UI -->
-                <div id="top-panel" class="frame-panel top-panel">
-                    <div class="panel-content">
-                        <!-- Wallet content will be moved here -->
-                        <div id="wallet-container-frame" class="wallet-container-frame">
-                            <!-- Wallet will be rendered here -->
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Middle Row - Left Panel, Game Canvas, Right Panel -->
                 <div id="middle-row" class="middle-row">
                     
-                    <!-- Left Panel - Multiplier Table + Live Stats -->
+                    <!-- Left Panel - Wallet UI -->
                     <div id="left-panel" class="frame-panel left-panel">
                         <div class="panel-content">
-                            <!-- Multiplier Section -->
-                            <div class="panel-section">
-                                <div class="panel-header">
-                                    <h3>MULTIPLIERS</h3>
-                                    <div class="difficulty-indicator">
-                                        <span id="multiplier-difficulty">EASY</span>
-                                    </div>
-                                </div>
-                                <div class="multiplier-table" id="multiplier-table">
-                                    <!-- Multipliers will be populated by JavaScript -->
-                                </div>
-                            </div>
-                            
-                            <!-- Live Stats Section -->
-                            <div class="panel-section">
-                                <div class="panel-header">
-                                    <h3>LIVE STATS</h3>
-                                </div>
-                                <div class="live-stats">
-                                    <div class="stat-item">
-                                        <span class="stat-label">Current Multiplier:</span>
-                                        <span id="live-multiplier" class="stat-value">1.0x</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Platforms:</span>
-                                        <span id="live-platforms" class="stat-value">0</span>
-                                    </div>
-                                    <div class="stat-item">
-                                        <span class="stat-label">Potential Win:</span>
-                                        <span id="live-potential" class="stat-value">0.0 MON</span>
-                                    </div>
-                                </div>
+                            <!-- Wallet UI will be rendered here -->
+                            <div id="privy-wallet-root-left" class="wallet-container-left">
+                                <!-- Wallet will be rendered here -->
                             </div>
                         </div>
                     </div>
@@ -294,27 +258,30 @@
                     <!-- Center Panel - Game Canvas -->
                     <div id="center-panel" class="frame-panel center-panel">
                         <div class="panel-content">
-                            <canvas id="canvas" class='ani_hack' width="1200" height="600" style="display: block;"></canvas>
+                            <canvas id="canvas" class='ani_hack' width="1200" height="800" style="display: block;"></canvas>
                             
-                            <!-- SVG Menu System - Inside Game Canvas -->
-                            <div class="svg-menu-container" id="svg-menu-container">
-                                <div class="svg-menu-button" id="svg-menu-button">
-                                    <img src="sprites/but_menu.png" alt="Menu" class="menu-icon">
-                                </div>
-                                <div class="menu-items" id="menu-items">
-                                    <div class="menu-item" id="menu-leaderboard" data-tooltip="Leaderboard">
+                        </div>
+                    </div>
+                    
+                    <!-- Right Panel - Game Menu -->
+                    <div id="right-panel" class="frame-panel right-panel">
+                        <div class="panel-content">
+                            <!-- SVG Menu System - Moved to Right Panel -->
+                            <div class="svg-menu-container" id="svg-menu-container-right">
+                                <div class="menu-items" id="menu-items-right">
+                                    <div class="menu-item" id="menu-leaderboard-right" data-tooltip="Leaderboard">
                                         <img class="menu-item-icon" src="sprites/but_leaderboard.png" alt="Leaderboard" width="82" height="82" />
                                     </div>
-                                    <div class="menu-item" id="menu-options" data-tooltip="Options">
+                                    <div class="menu-item" id="menu-options-right" data-tooltip="Options">
                                         <img class="menu-item-icon" src="sprites/but_opts.png" alt="Options" width="82" height="82" />
                                     </div>
-                                    <div class="menu-item" id="menu-sound" data-tooltip="Sound">
+                                    <div class="menu-item" id="menu-sound-right" data-tooltip="Sound">
                                         <img class="menu-item-icon" src="sprites/but_audio.png" alt="Sound" width="82" height="82" />
                                     </div>
-                                    <div class="menu-item" id="menu-fullscreen" data-tooltip="Fullscreen">
+                                    <div class="menu-item" id="menu-fullscreen-right" data-tooltip="Fullscreen">
                                         <img class="menu-item-icon" src="sprites/but_fullscreen.png" alt="Fullscreen" width="82" height="82" />
                                     </div>
-                                    <div class="menu-item" id="menu-credits" data-tooltip="How to">
+                                    <div class="menu-item" id="menu-credits-right" data-tooltip="How to">
                                         <img class="menu-item-icon" src="sprites/but_ht.png" alt="How to" width="82" height="82" />
                                     </div>
                                 </div>
@@ -322,84 +289,12 @@
                         </div>
                     </div>
                     
-                    <!-- Right Panel - Strategy & Tips -->
-                    <div id="right-panel" class="frame-panel right-panel">
-                        <div class="panel-content">
-                            <!-- Strategy Section -->
-                            <div class="panel-section">
-                                <div class="panel-header">
-                                    <h3>STRATEGY</h3>
-                                </div>
-                                <div class="strategy-content">
-                                    <div class="strategy-item">
-                                        <span class="strategy-label">Risk Management:</span>
-                                        <span class="strategy-text">Cashout early for consistent wins</span>
-                                    </div>
-                                    <div class="strategy-item">
-                                        <span class="strategy-label">Easy Mode:</span>
-                                        <span class="strategy-text">25% risk per platform</span>
-                                    </div>
-                                    <div class="strategy-item">
-                                        <span class="strategy-label">Hard Mode:</span>
-                                        <span class="strategy-text">40% risk per platform</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Tips Section -->
-                            <div class="panel-section">
-                                <div class="panel-header">
-                                    <h3>TIPS</h3>
-                                </div>
-                                <div class="tips-content">
-                                    <div class="tip-item">
-                                        <span class="tip-icon">💡</span>
-                                        <span class="tip-text">Start with small bets</span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <span class="tip-icon">🎯</span>
-                                        <span class="tip-text">Set profit targets</span>
-                                    </div>
-                                    <div class="tip-item">
-                                        <span class="tip-icon">⚠️</span>
-                                        <span class="tip-text">Never chase losses</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
                 </div>
                 
-                <!-- Bottom Panel - Bet UI -->
-                <div id="bottom-panel" class="frame-panel bottom-panel">
-                    <div class="panel-content">
-                        <!-- Betting UI content will be moved here -->
-                        <div id="betting-ui-frame" class="betting-ui-frame">
-                            <!-- Betting UI will be rendered here -->
-                        </div>
-                    </div>
-                </div>
+                
                 
             </div>
             
-            <!-- SOCIAL MEDIA MENU -->
-            <div class="social-menu-container" id="social-menu-container" style="left: 30px; top: 50px; right: auto;">
-                <div class="social-menu-button" id="social-menu-button">
-                    <img src="sprites/but_social.png" alt="Social" class="social-icon">
-                </div>
-                <div class="social-items" id="social-items">
-                    <a class="social-item" id="social-twitter" href="https://x.com/ChogNFT" target="_blank" rel="noopener" data-tooltip="Twitter">
-                        <img class="social-item-icon" src="sprites/but_twitter.png" alt="Twitter" width="39" height="39" />
-                    </a>
-                    <a class="social-item" id="social-discord" href="https://discord.gg/chog" target="_blank" rel="noopener" data-tooltip="Discord">
-                        <img class="social-item-icon" src="sprites/but_dc.png" alt="Discord" width="39" height="39" />
-                    </a>
-                    <a class="social-item" id="social-app" href="https://chog.xyz/" target="_blank" rel="noopener" data-tooltip="Website">
-                        <img class="social-item-icon" src="sprites/but_web.png" alt="Website" width="39" height="39" />
-                    </a>
-                </div>
-            </div>
             
             <!-- Fixed UI Area at Bottom of Game -->
             <div id="ui-container">
@@ -424,8 +319,14 @@
                                 <button id="hard-mode" class="diff-btn">HARD</button>
                             </div>
                         </div>
+                        <div class="play-mode-section">
+                            <label>PLAY:</label>
+                            <div class="play-mode-controls">
+                                <button id="manual-mode" class="mode-btn active">MANUAL</button>
+                                <button id="auto-mode" class="mode-btn">AUTO</button>
+                            </div>
+                        </div>
                         <div class="action-buttons">
-                            <button id="wallet-toggle" class="wallet-toggle-btn">WALLET</button>
                             <button id="recovery-funds" class="action-btn recovery" style="display: none;">🚨 RECOVER FUNDS</button>
                             <button id="start-game" class="action-btn primary">START GAME</button>
                             <button id="back-menu" class="action-btn secondary">HOME</button>
@@ -459,7 +360,6 @@
                             </div>
                         </div>
                         <div class="game-actions">
-                            <button id="wallet-toggle-game" class="wallet-toggle-btn">WALLET</button>
                             <button id="cashout-btn" class="action-btn danger cashout-button">CASHOUT</button>
                             <button id="back-menu-game" class="action-btn secondary">HOME</button>
                         </div>
@@ -468,6 +368,48 @@
             </div>
         </div>
         
+        <!-- Auto Settings Panel -->
+        <div id="auto-settings-panel" class="auto-settings-panel" style="display: none;">
+            <div class="auto-settings-content">
+                <div class="auto-settings-header">
+                    <h2>🤖 Auto Mode Settings</h2>
+                    <button id="close-auto-settings" class="close-btn">×</button>
+                </div>
+                <div class="auto-settings-body">
+                    <div class="target-platform-section">
+                        <label>Target Platform:</label>
+                        <div class="platform-controls">
+                            <button id="platform-minus" class="platform-btn">-</button>
+                            <div id="platform-display" class="platform-display">1</div>
+                            <button id="platform-plus" class="platform-btn">+</button>
+                        </div>
+                        <div class="platform-info">
+                            <span id="platform-multiplier">1.3x</span>
+                            <span id="platform-winnings">1.3 MON</span>
+                        </div>
+                    </div>
+                    <div class="auto-info-section">
+                        <div class="auto-info-item">
+                            <span class="info-label">Auto Jump:</span>
+                            <span class="info-value">Every 5 seconds</span>
+                        </div>
+                        <div class="auto-info-item">
+                            <span class="info-label">Auto Cashout:</span>
+                            <span class="info-value">At target platform</span>
+                        </div>
+                        <div class="auto-info-item">
+                            <span class="info-label">Auto Fail:</span>
+                            <span class="info-value">If missed target</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="auto-settings-footer">
+                    <button id="confirm-auto-settings" class="action-btn primary">CONFIRM</button>
+                    <button id="cancel-auto-settings" class="action-btn secondary">CANCEL</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Options Panel -->
         <div id="options-panel" class="options-panel" style="display: none;">
             <div class="options-content">
@@ -530,6 +472,7 @@
         <script src="js/SvgMenuSystem.js"></script>
         
         <!-- New Leaderboard System Scripts -->
+        <script src="js/GhostGraphService.js"></script>
         <script src="js/LeaderboardManager.js"></script>
         <script src="js/CLeaderboardNew.js"></script>
 

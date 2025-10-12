@@ -13,7 +13,11 @@ if (typeof window !== 'undefined') {
 
 // Wait for DOM to be ready
 function initWallet() {
-  const walletRoot = document.getElementById("privy-wallet-root");
+  // Try left panel root first, then fallback to original root
+  const leftPanelRoot = document.getElementById("privy-wallet-root-left");
+  const originalRoot = document.getElementById("privy-wallet-root");
+  
+  const walletRoot = leftPanelRoot || originalRoot;
   
   if (!walletRoot) {
     console.error("❌ Wallet root element not found!");
@@ -22,7 +26,7 @@ function initWallet() {
     return;
   }
   
-  console.log("✅ Wallet root element found, initializing React...");
+  console.log("✅ Wallet root element found, initializing React in:", leftPanelRoot ? "left panel" : "original location");
   
   try {
     const root = createRoot(walletRoot);

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { PrivyProvider, usePrivy, useWallets } from "@privy-io/react-auth";
 import { defineChain, createWalletClient, custom } from 'viem';
 
@@ -43,19 +44,53 @@ function WalletUI() {
   
   const { login, logout, authenticated, user, ready } = usePrivy();
   const { wallets } = useWallets();
+  
+  // Global error handler for debugging
+  useEffect(() => {
+    const handleError = (event) => {
+      console.error("🚨 Global error caught in WalletUI:", event.error);
+      console.error("🚨 Error details:", {
+        message: event.error?.message,
+        stack: event.error?.stack,
+        name: event.error?.name,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+      });
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
   const [balance, setBalance] = useState(0);
+  const [onlinePlayerCount, setOnlinePlayerCount] = useState(0);
   const [sessionReady, setSessionReady] = useState(false);
   const [profit, setProfit] = useState(0);
-  const [showSendModal, setShowSendModal] = useState(false);
   const [sendToAddress, setSendToAddress] = useState('');
   const [sendAmount, setSendAmount] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [showProfileDrawer, setShowProfileDrawer] = useState(false);
+  const [playerStats, setPlayerStats] = useState(null);
+  const [isLoadingStats, setIsLoadingStats] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   
   // SIMPLE MOUNT TEST - Bu her zaman çalışmalı
   useEffect(() => {
     console.log("🎯 WalletUI MOUNTED - useEffect çalışıyor!");
   }, []); // Boş dependency array
+
+  // Login modal control
+  useEffect(() => {
+    if (ready && !authenticated) {
+      console.log("🔐 User not authenticated, showing login modal");
+      setShowLoginModal(true);
+      console.log("🔍 Login modal state:", showLoginModal);
+    } else if (authenticated) {
+      console.log("✅ User authenticated, hiding login modal");
+      setShowLoginModal(false);
+    }
+  }, [ready, authenticated]);
   
   // EXPOSE PRIVY WALLET TO VANILLA JAVASCRIPT
   useEffect(() => {
@@ -708,12 +743,17 @@ function WalletUI() {
         const player = playerStats.player;
         const games = playerStats.games || [];
         
-        // Calculate net profit like in leaderboard
+        // Use the correct profit calculation from GhostGraphService
         const totalWinnings = player.totalWinnings || 0;
-        const totalLosses = games
-          .filter(g => g.winnings === 0)
-          .reduce((sum, g) => sum + g.betAmount, 0);
-        const netProfit = totalWinnings - totalLosses;
+        const totalLossesAmount = player.totalLossesAmount || 0;
+        const netProfit = totalWinnings - totalLossesAmount;
+        
+        console.log("💰 Correct profit calculation:", {
+          totalWinnings,
+          totalLossesAmount,
+          netProfit,
+          playerData: player
+        });
         
         console.log("💰 Net profit from leaderboard:", netProfit);
         setProfit(netProfit);
@@ -799,95 +839,111 @@ function WalletUI() {
     }
   };
 
-  const handleSendClick = () => {
-    setShowSendModal(true);
-    setSendToAddress('');
-    setSendAmount('');
-  };
+  const handleSendTransaction = async () => {
+    if (!sendToAddress.trim() || !sendAmount.trim()) {
+      setNotification({
+        type: 'error',
+        title: 'Validation Error',
+        message: 'Please fill in both address and amount fields',
+        timestamp: Date.now()
+      });
+      return;
+    }
 
-  const handleSendClose = () => {
-    setShowSendModal(false);
-    setSendToAddress('');
-    setSendAmount('');
-    setIsSending(false);
-  };
+    const amount = parseFloat(sendAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setNotification({
+        type: 'error',
+        title: 'Invalid Amount',
+        message: 'Please enter a valid amount greater than 0',
+        timestamp: Date.now()
+      });
+      return;
+    }
 
-  const handleSendSubmit = async () => {
-    if (!sendToAddress || !sendAmount || isSending) return;
-    
+    if (amount > balance) {
+      setNotification({
+        type: 'error',
+        title: 'Insufficient Balance',
+        message: `You only have ${balance.toFixed(4)} MON available`,
+        timestamp: Date.now()
+      });
+      return;
+    }
+
     try {
       setIsSending(true);
-      console.log("🚀 Sending MON:", sendAmount, "to:", sendToAddress);
-      
-      // Validate address
-      if (!/^0x[a-fA-F0-9]{40}$/.test(sendToAddress)) {
-        alert("Invalid Ethereum address format");
-        return;
+      console.log('🚀 Sending transaction:', { to: sendToAddress, amount });
+
+      // Get the Privy provider
+      const provider = window.realPrivyProvider || window.ethereum;
+      if (!provider) {
+        throw new Error('No wallet provider found');
       }
-      
-      // Validate amount
-      const amount = parseFloat(sendAmount);
-      if (isNaN(amount) || amount <= 0) {
-        alert("Invalid amount");
-        return;
-      }
-      
-      if (amount > balance) {
-        alert("Insufficient balance");
-        return;
-      }
-      
-      // Get real Privy provider
-      const realPrivyProvider = window.realPrivyProvider;
-      if (!realPrivyProvider) {
-        alert("Wallet provider not available");
-        return;
-      }
-      
-      // Convert amount to wei
-      const amountWei = (amount * Math.pow(10, 18)).toString(16);
-      
-      // Get gas price
-      const gasPrice = await realPrivyProvider.request({
-        method: 'eth_gasPrice'
-      });
-      
-      // Estimate gas
-      const gasEstimate = await realPrivyProvider.request({
-        method: 'eth_estimateGas',
-        params: [{
-          from: user.wallet.address,
-          to: sendToAddress,
-          value: '0x' + amountWei
-        }]
-      });
-      
-      // Send transaction with higher gas limit
-      const txHash = await realPrivyProvider.request({
+
+      // Convert amount to wei (assuming 18 decimals for MON)
+      const amountInWei = (amount * Math.pow(10, 18)).toString(16);
+      const amountHex = '0x' + amountInWei;
+
+      // Send transaction
+      const txHash = await provider.request({
         method: 'eth_sendTransaction',
         params: [{
-          from: user.wallet.address,
+          from: user?.wallet?.address,
           to: sendToAddress,
-          value: '0x' + amountWei,
-          gas: '0x186A0', // 100,000 in hex
-          gasPrice: gasPrice
+          value: amountHex,
+          gas: '0x5208', // 21000 gas for simple transfer
         }]
       });
-      
-      console.log("✅ Transaction sent:", txHash);
-      
-      // Show custom notification instead of alert
-      showTransactionNotification(txHash, amount, sendToAddress);
-      
-      // Refresh balance
-      await handleRefreshBalance();
-      
-      // Close modal
-      handleSendClose();
-      
+
+      console.log('✅ Transaction sent:', txHash);
+
+      // Show success notification with transaction details
+      setNotification({
+        type: 'success',
+        title: 'Transaction Sent!',
+        message: `Successfully sent ${amount} MON to ${sendToAddress.substring(0, 10)}...`,
+        txHash: txHash,
+        toAddress: sendToAddress,
+        timestamp: Date.now()
+      });
+
+      // Clear form
+      setSendToAddress('');
+      setSendAmount('');
+
+      // Refresh balance after a delay
+      setTimeout(() => {
+        if (window.refreshBalance) {
+          window.refreshBalance();
+        }
+      }, 3000);
+
     } catch (error) {
-      console.error("❌ Failed to send transaction:", error);
-      alert("Failed to send transaction: " + error.message);
+      console.error('❌ Send transaction failed:', error);
+      
+      let errorMessage = 'Transaction failed';
+      if (error.message) {
+        errorMessage = error.message;
+      } else if (error.code) {
+        switch (error.code) {
+          case 4001:
+            errorMessage = 'Transaction rejected by user';
+            break;
+          case -32603:
+            errorMessage = 'Internal error - insufficient funds or gas';
+            break;
+          default:
+            errorMessage = `Transaction failed (${error.code})`;
+        }
+      }
+
+      setNotification({
+        type: 'error',
+        title: 'Transaction Failed',
+        message: errorMessage,
+        timestamp: Date.now()
+      });
     } finally {
       setIsSending(false);
     }
@@ -943,6 +999,169 @@ function WalletUI() {
     }
   };
 
+  // Auto-hide notification after 8 seconds
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => {
+        setNotification(null);
+      }, 8000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
+  // Update online player count
+  useEffect(() => {
+    const updateOnlinePlayerCount = () => {
+      if (window.socialFeatures && window.socialFeatures.getOnlinePlayerCount) {
+        const count = window.socialFeatures.getOnlinePlayerCount();
+        setOnlinePlayerCount(count);
+      } else {
+        // Fallback: simulate player count
+        const baseCount = 150;
+        const variation = Math.floor(Math.random() * 50) - 25;
+        const timeOfDay = new Date().getHours();
+        const peakBonus = (timeOfDay >= 12 && timeOfDay <= 18) ? 30 : 0;
+        const count = Math.max(50, baseCount + variation + peakBonus);
+        setOnlinePlayerCount(count);
+      }
+    };
+
+    // Update immediately
+    updateOnlinePlayerCount();
+
+    // Update every 30 seconds
+    const interval = setInterval(updateOnlinePlayerCount, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleProfileToggle = () => {
+    const newShowState = !showProfileDrawer;
+    setShowProfileDrawer(newShowState);
+    console.log("👤 Profile drawer toggled:", newShowState);
+    
+    // Load player stats when opening profile
+    if (newShowState && authenticated && user?.wallet?.address) {
+      loadPlayerStats();
+    }
+  };
+
+  const loadPlayerStats = async () => {
+    if (!authenticated || !user?.wallet?.address) return;
+    
+    try {
+      setIsLoadingStats(true);
+      console.log("📊 Loading player stats for:", user.wallet.address);
+      
+      // Get player stats from leaderboard manager
+      if (window.s_oLeaderboardManager && window.s_oLeaderboardManager.getPlayerStats) {
+        console.log("📊 Using cached player stats for:", user.wallet.address);
+        const playerData = await window.s_oLeaderboardManager.getPlayerStats(user.wallet.address);
+        console.log("✅ Player stats loaded:", playerData);
+        setPlayerStats(playerData);
+      } else {
+        console.log("⚠️ LeaderboardManager not available");
+        setPlayerStats(null);
+      }
+    } catch (error) {
+      console.error("❌ Failed to load player stats:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      setPlayerStats(null);
+    } finally {
+      setIsLoadingStats(false);
+    }
+  };
+
+  // Safe render function for player stats
+  const renderPlayerStats = () => {
+    try {
+      if (isLoadingStats) {
+        return (
+          <div className="stats-loading">
+            <div className="loading-spinner-small"></div>
+            <span>Loading stats...</span>
+          </div>
+        );
+      }
+      
+      if (playerStats && playerStats.player) {
+        const player = playerStats.player;
+        const totalGames = Number(player.totalGames || 0);
+        const totalWins = Number(player.totalWins || 0);
+        const totalLosses = Number(player.totalLosses || 0);
+        const totalWinnings = Number(player.totalWinnings || 0);
+        const totalLossesAmount = Number(player.totalLossesAmount || 0);
+        const netProfit = totalWinnings - totalLossesAmount;
+        const winRate = totalGames > 0 ? (totalWins / totalGames) * 100 : 0;
+        
+        return (
+          <div className="stats-grid-detailed">
+            <div className="stat-item">
+              <span className="stat-label">Total Games:</span>
+              <span className="stat-value">{totalGames}</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Wins:</span>
+              <span className="stat-value">{totalWins} games</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Losses:</span>
+              <span className="stat-value">{totalLosses} games</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Total Winnings:</span>
+              <span className="stat-value">{totalWinnings.toFixed(2)} MON</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Total Losses:</span>
+              <span className="stat-value">{totalLossesAmount.toFixed(2)} MON</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Net Profit:</span>
+              <span className={`stat-value ${netProfit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {netProfit >= 0 ? '+' : ''}{netProfit.toFixed(2)} MON
+              </span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-label">Win Rate:</span>
+              <span className="stat-value">{winRate.toFixed(1)}%</span>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="stats-grid">
+          <div className="stat-item">
+            <span className="stat-label">Total Games:</span>
+            <span className="stat-value">-</span>
+          </div>
+          <div className="stat-item">
+            <span className="stat-label">Total Profit:</span>
+            <span className={`stat-value ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+              {profit >= 0 ? '+' : ''}{profit.toFixed(4)} MON
+            </span>
+          </div>
+        </div>
+      );
+    } catch (error) {
+      console.error("❌ Error rendering player stats:", error);
+      return (
+        <div className="stats-grid">
+          <div className="stat-item">
+            <span className="stat-label">Error:</span>
+            <span className="stat-value">Failed to load stats</span>
+          </div>
+        </div>
+      );
+    }
+  };
+
   if (!ready) {
     return (
       <div className="wallet-loading">
@@ -957,22 +1176,18 @@ function WalletUI() {
       <div className="wallet-content">
         <div className="wallet-info">
           <div className="wallet-status">
-            <span className={`status-indicator ${authenticated ? 'connected' : 'disconnected'}`}>
-              ●
-            </span>
-            <span className="status-text">
+            <span className="status-text" style={{ fontSize: '20px', fontWeight: 'bold' }}>
               {authenticated ? 'Connected' : 'Not Connected'}
             </span>
-            {authenticated && (
-              <span className="status-text" style={{ marginLeft: 8 }}>
-                {sessionReady ? '(Session Ready)' : '(Preparing Session...)'}
-              </span>
-            )}
+            <span className={`status-indicator ${authenticated ? 'connected' : 'disconnected'}`} style={{ marginLeft: '10px', fontSize: '18px' }}>
+              ●
+            </span>
             {authenticated && user?.wallet && (
               <span 
                 className="address-value clickable-address" 
                 onClick={handleAddressClick}
                 title="Click to copy full address"
+                style={{ fontSize: '16px', marginLeft: '15px', fontWeight: 'bold' }}
               >
                 {user.wallet.address ? 
                   `${user.wallet.address.substring(0, 6)}...${user.wallet.address.substring(user.wallet.address.length - 4)}` : 
@@ -980,125 +1195,223 @@ function WalletUI() {
                 }
               </span>
             )}
+            {authenticated && (
+              <button 
+                className="profile-toggle-btn"
+                onClick={handleProfileToggle}
+                title="Profile"
+                style={{
+                  marginLeft: '15px',
+                  background: 'transparent',
+                  border: '2px solid #676FFF',
+                  borderRadius: '8px',
+                  color: '#676FFF',
+                  padding: '8px 16px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#676FFF';
+                  e.target.style.color = '#000';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.color = '#676FFF';
+                }}
+              >
+                👤 Profile
+              </button>
+            )}
+          </div>
+          
+          {/* MON Balance ve Profit Bilgileri */}
+          {authenticated && (
+            <div className="balance-profit-section">
+              <div className="balance-item">
+                <span className="balance-label">MON Balance:</span>
+                <span className="balance-value" style={{ color: '#FFD700', fontWeight: 'bold' }}>
+                  {balance.toFixed(2)} MON
+                </span>
+              </div>
+              <div className="profit-item">
+                <span className="profit-label">Profit:</span>
+                <span className={`profit-value ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`} style={{ fontWeight: 'bold' }}>
+                  {profit >= 0 ? '+' : ''}{profit.toFixed(2)} MON
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Social Media Links */}
+          <div className="social-links-section">
+            <div className="social-links-title">Follow Us</div>
+            <div className="social-links-container">
+              <a 
+                href="https://x.com/ChogNFT" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="social-link twitter-link"
+                title="Follow us on X (Twitter)"
+              >
+                <img src="/sprites/but_twitter.png" alt="Twitter" className="social-icon-img" />
+              </a>
+              <a 
+                href="https://discord.gg/chog" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="social-link discord-link"
+                title="Join our Discord"
+              >
+                <img src="/sprites/but_dc.png" alt="Discord" className="social-icon-img" />
+              </a>
+              <a 
+                href="https://chog.xyz/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="social-link website-link"
+                title="Visit our website"
+              >
+                <img src="/sprites/but_web.png" alt="Website" className="social-icon-img" />
+              </a>
+            </div>
+          </div>
+
+          {/* Online Players Count */}
+          <div className="online-players-section">
+            <div className="online-players-title">Online Players</div>
+            <div className="online-indicator">
+              <span className="green-light"></span>
+              <span className="player-count">{onlinePlayerCount}</span>
+            </div>
           </div>
         </div>
         
-        {authenticated && user?.wallet && (
-          <div className="wallet-balance">
-            <div className="balance-item" style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap' }}>
-              <span className="balance-label">MON Balance:</span>
-              <span className="balance-value" id="react-balance-display" style={{ marginLeft: '8px', whiteSpace: 'nowrap' }}>
-                {balance.toFixed(4)} MON
-                <span 
-                  className="refresh-icon" 
-                  onClick={handleRefreshBalance} 
-                  title="Refresh Balance"
-                  style={{
-                    marginLeft: '4px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                    opacity: 0.7,
-                    transition: 'opacity 0.2s ease, transform 0.2s ease',
-                    display: 'inline',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.target.style.opacity = '1';
-                    e.target.style.transform = 'rotate(180deg)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.target.style.opacity = '0.7';
-                    e.target.style.transform = 'rotate(0deg)';
-                  }}
-                >
-                  🔄
-                </span>
-              </span>
-            </div>
-            <div className="balance-item">
-              <span className="balance-label">Profit:</span>
-              <span id="profit-display" className={`balance-value ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {profit >= 0 ? '+' : ''}{profit.toFixed(4)} MON
-              </span>
-            </div>
-          </div>
-        )}
-        
         <div className="wallet-actions">
-          {authenticated ? (
-            <>
-              <button className="wallet-btn send-btn" onClick={handleSendClick}>
-                Send MON
-              </button>
-              <button className="wallet-btn disconnect-btn" onClick={handleLogout}>
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <button className="wallet-btn connect-btn" onClick={handleLogin}>
-              Login
-            </button>
-          )}
+          {/* Disconnect button moved to profile drawer */}
         </div>
       </div>
       
-      {/* Send Modal */}
-      {showSendModal && (
-        <div className="send-modal-overlay">
-          <div className="send-modal">
-            <div className="send-modal-header">
-              <h3>Send MON</h3>
-              <button className="close-btn" onClick={handleSendClose}>×</button>
+      {/* Profile Drawer */}
+      {showProfileDrawer && authenticated && (
+        <div className="profile-drawer">
+          <div className="profile-drawer-content">
+            <div className="profile-header">
+              <h3 style={{ fontSize: '20px', fontWeight: 'bold' }}>👤 Profile</h3>
+              <div className="profile-header-actions">
+                <button 
+                  className="disconnect-btn-profile" 
+                  onClick={handleLogout}
+                  style={{
+                    background: '#ff4444',
+                    border: '2px solid #ff4444',
+                    borderRadius: '8px',
+                    color: 'white',
+                    padding: '8px 16px',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    transition: '0.2s',
+                    marginRight: '8px'
+                  }}
+                >
+                  Disconnect
+                </button>
+                <button 
+                  className="close-profile-btn" 
+                  onClick={handleProfileToggle}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#676FFF',
+                    fontSize: '18px',
+                    cursor: 'pointer',
+                    padding: '4px'
+                  }}
+                >
+                  ×
+                </button>
+              </div>
             </div>
             
-            <div className="send-modal-content">
-              <div className="form-group">
-                <label>To Address:</label>
-                <input
-                  type="text"
-                  value={sendToAddress}
-                  onChange={(e) => setSendToAddress(e.target.value)}
-                  placeholder="0x..."
-                  className="address-input"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>Amount (MON):</label>
-                <input
-                  type="number"
-                  value={sendAmount}
-                  onChange={(e) => setSendAmount(e.target.value)}
-                  placeholder="0.0"
-                  step="0.0001"
-                  min="0"
-                  max={balance}
-                  className="amount-input"
-                />
-                <div className="balance-info">
-                  Available: {balance.toFixed(4)} MON
+            <div className="profile-section">
+              <h4 style={{ fontSize: '18px', fontWeight: 'bold' }}>📊 Game Statistics</h4>
+              {renderPlayerStats()}
+            </div>
+            
+            <div className="profile-section">
+              <h4 style={{ fontSize: '18px', fontWeight: 'bold' }}>🔗 Wallet Info</h4>
+              <div className="wallet-info-detail">
+                <div className="info-item">
+                  <span className="info-label" style={{ fontSize: '16px', fontWeight: 'bold' }}>Address:</span>
+                  <span 
+                    className="info-value clickable" 
+                    onClick={handleAddressClick}
+                    style={{ cursor: 'pointer', color: '#676FFF', fontSize: '14px', fontWeight: 'bold' }}
+                  >
+                    {user?.wallet?.address ? 
+                      `${user.wallet.address.substring(0, 10)}...${user.wallet.address.substring(user.wallet.address.length - 8)}` : 
+                      'N/A'
+                    }
+                  </span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label" style={{ fontSize: '16px', fontWeight: 'bold' }}>Network:</span>
+                  <span className="info-value" style={{ fontSize: '16px', fontWeight: 'bold' }}>Monad Testnet</span>
+                </div>
+                <div className="info-item">
+                  <span className="info-label" style={{ fontSize: '16px', fontWeight: 'bold' }}>Balance:</span>
+                  <span className="info-value" style={{ fontSize: '18px', fontWeight: 'bold', color: '#FFD700' }}>{balance.toFixed(2)} MON</span>
                 </div>
               </div>
             </div>
             
-            <div className="send-modal-actions">
-              <button 
-                className="wallet-btn cancel-btn" 
-                onClick={handleSendClose}
-                disabled={isSending}
-              >
-                Cancel
-              </button>
-              <button 
-                className="wallet-btn send-submit-btn" 
-                onClick={handleSendSubmit}
-                disabled={isSending || !sendToAddress || !sendAmount}
-              >
-                {isSending ? 'Sending...' : 'Send'}
-              </button>
+            <div className="profile-section">
+              <h4 style={{ fontSize: '18px', fontWeight: 'bold' }}>💸 Withdraw MON</h4>
+              <div className="send-mon-form">
+                <div className="form-group">
+                  <label>To Address:</label>
+                  <input
+                    type="text"
+                    value={sendToAddress}
+                    onChange={(e) => setSendToAddress(e.target.value)}
+                    placeholder="Enter recipient address..."
+                    className="address-input"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Amount (MON):</label>
+                  <input
+                    type="number"
+                    value={sendAmount}
+                    onChange={(e) => setSendAmount(e.target.value)}
+                    placeholder="0.0000"
+                    step="0.0001"
+                    min="0"
+                    max={balance}
+                    className="amount-input"
+                  />
+                  <div className="balance-info">
+                    Available: {balance.toFixed(2)} MON
+                  </div>
+                </div>
+                <div className="send-actions">
+                  <button
+                    onClick={handleSendTransaction}
+                    disabled={isSending || !sendToAddress.trim() || !sendAmount || parseFloat(sendAmount) <= 0 || parseFloat(sendAmount) > balance}
+                    className="send-submit-btn"
+                  >
+                    {isSending ? 'Withdrawing...' : 'Withdraw MON'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       )}
+      
+      {/* Send Modal */}
       
       {/* Transaction Notification */}
       {notification && (
@@ -1133,6 +1446,40 @@ function WalletUI() {
             </div>
           </div>
         </div>
+      )}
+      
+      {/* Login Modal */}
+      {showLoginModal && createPortal(
+        <div className="login-modal-overlay" style={{zIndex: 999999}} onClick={(e) => e.stopPropagation()}>
+          <div className="login-modal">
+            <div className="login-modal-header">
+              <h2>Welcome to ChogCross</h2>
+              <p>Please login to play the game</p>
+            </div>
+            <div className="login-modal-content">
+              <button 
+                className="login-modal-btn" 
+                onClick={handleLogin}
+                style={{
+                  background: '#676FFF',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: 'white',
+                  padding: '12px 24px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: '0.2s',
+                  width: '100%',
+                  marginTop: '16px'
+                }}
+              >
+                Login
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -1184,5 +1531,26 @@ export default function App() {
         <p>Error: {error.message}</p>
       </div>
     );
+  }
+}
+
+// Function to render wallet in left panel
+export function renderWalletInLeftPanel() {
+  console.log("🎯 Rendering wallet in left panel...");
+  
+  const leftPanelRoot = document.getElementById('privy-wallet-root-left');
+  if (leftPanelRoot && window.React && window.ReactDOM && window.createRoot) {
+    try {
+      const root = window.createRoot(leftPanelRoot);
+      root.render(window.React.createElement(App, {}));
+      console.log("✅ Wallet rendered in left panel successfully!");
+    } catch (error) {
+      console.error("❌ Failed to render wallet in left panel:", error);
+    }
+  } else {
+    console.log("⏳ Left panel root or React not ready, will retry...");
+    setTimeout(() => {
+      renderWalletInLeftPanel();
+    }, 1000);
   }
 }
