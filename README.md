@@ -1,8 +1,8 @@
-# 🎮 ChogCross Gambling Game
+#  ChogCross Gambling Game
 
 
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
